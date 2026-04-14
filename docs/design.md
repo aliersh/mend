@@ -13,11 +13,11 @@ This document explains the **why** behind the M1 design. The function-by-functio
 
 ## Problem statement
 
-Tracking shared expenses between people is a well-served problem space. Tools like Splitwise, Tricount, and SplitMyExpenses have tens of millions of combined users and handle the *tracking* side well. Most now offer payment integrations, including Venmo, PayPal, bank transfers, and in-app wallets, so settlement is no longer an unsolved problem. It is, however, still **trust-based**.
+Tracking shared expenses between people is a well-served problem space. Tools like Splitwise, Tricount, and SplitMyExpenses have tens of millions of combined users and handle the _tracking_ side well. Most now offer payment integrations, including Venmo, PayPal, bank transfers, and in-app wallets, so settlement is no longer an unsolved problem. It is, however, still **trust-based**.
 
 Even with integrated payments, the ledger and the money movement remain two separate systems. The app marks a debt as settled either because a payment provider reported a transfer or because a user tapped a button indicating they paid. The link between "what is owed" and "what was paid" is an assertion, not a verifiable on-chain fact. If the payment fails silently, the amount is wrong, or the external provider's state diverges from the app's state, the ledger becomes unreliable, and there is no independent way to audit it.
 
-A blockchain-backed implementation closes that gap. When balances and settlement live in the same contract, settlement is no longer a trust assertion; it is the same on-chain event as the balance update. The payment *is* the proof.
+A blockchain-backed implementation closes that gap. When balances and settlement live in the same contract, settlement is no longer a trust assertion; it is the same on-chain event as the balance update. The payment _is_ the proof.
 
 ## Value proposition
 
@@ -40,7 +40,7 @@ M1 must:
 
 ## Non-goals
 
-M1 is deliberately *not* attempting to:
+M1 is deliberately _not_ attempting to:
 
 - **Be impressive on its own.** The product thesis lives in M2 (onboarding). M1's role is to be a correct, boring foundation.
 - **Be usable by non-crypto users.** M1 assumes that both members are crypto-native and can manage their own wallets. Onboarding non-crypto users is the focus of M2 and gets its own scope.
@@ -74,13 +74,13 @@ Why this matters:
 
 ### 2. Debtor-triggered settlement
 
-Even though the pre-approval pattern technically permits *either* party to call `settle()` and pull funds (the creditor could pull from the debtor's allowance just as easily as the debtor can push), M1 restricts `settle()` to the debtor only.
+Even though the pre-approval pattern technically permits _either_ party to call `settle()` and pull funds (the creditor could pull from the debtor's allowance just as easily as the debtor can push), M1 restricts `settle()` to the debtor only.
 
-The technical defense to either-party-settle is that the debtor *consented* by approving. This is how every DeFi protocol works: Uniswap, Aave, and Compound. From a strict consent standpoint, it is defensible.
+The technical defense to either-party-settle is that the debtor _consented_ by approving. This is how every DeFi protocol works: Uniswap, Aave, and Compound. From a strict consent standpoint, it is defensible.
 
-The cultural mental model of shared expenses is different: "I'll pay you back when we settle up". Settlement is something a user *does*, not something that happens *to* them. Allowing the creditor to unilaterally withdraw funds from the debtor's wallet, even with technical approval, would surprise users and erode trust.
+The cultural mental model of shared expenses is different: "I'll pay you back when we settle up". Settlement is something a user _does_, not something that happens _to_ them. Allowing the creditor to unilaterally withdraw funds from the debtor's wallet, even with technical approval, would surprise users and erode trust.
 
-Trade-off accepted: M1 has slightly worse UX (the debtor must actively settle) in exchange for honoring user expectations around consent. The approval pattern still earns its keep: settlement is a single transaction rather than two, but the *trigger* belongs to the debtor.
+Trade-off accepted: M1 has slightly worse UX (the debtor must actively settle) in exchange for honoring user expectations around consent. The approval pattern still earns its keep: settlement is a single transaction rather than two, but the _trigger_ belongs to the debtor.
 
 This decision is reversible. Adding "either party can settle" in M2 is a one-line change. Removing it after users have built trust assumptions around debtor-only is much harder. The conservative semantics are the default.
 
@@ -150,7 +150,6 @@ Either member can post any expense, and it is immediately reflected in the balan
 
 These milestones are directional, not committed. M1 is the current focus; subsequent milestones may change, be reordered, or be dropped entirely.
 
-
 | Milestone | Theme                                                            | Status      |
 | --------- | ---------------------------------------------------------------- | ----------- |
 | M1        | Two-party non-custodial IOU contract                             | In design   |
@@ -158,11 +157,9 @@ These milestones are directional, not committed. M1 is the current focus; subseq
 | M3        | Multi-party groups and debt graph simplification                 | Exploratory |
 | M4        | Off-chain integration — bank-feed ingestion, auto-classification | Speculative |
 
-
-M2 and M3 are deliberately ordered with **onboarding before multi-party**. The current ordering reflects that multi-party math is technically interesting, but does not change *who can use the product*, while onboarding does. M2 is where the product thesis lives. M1 is the foundation M2 needs to exist. M3 is interesting but optional. M4 is conditional on the rest of the project succeeding.
+M2 and M3 are deliberately ordered with **onboarding before multi-party**. The current ordering reflects that multi-party math is technically interesting, but does not change _who can use the product_, while onboarding does. M2 is where the product thesis lives. M1 is the foundation M2 needs to exist. M3 is interesting but optional. M4 is conditional on the rest of the project succeeding.
 
 ## References
 
 - `[spec.md](spec.md)` — Function-by-function contract specification
 - `[README.md](../README.md)` — Project front door
-
