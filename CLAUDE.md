@@ -32,7 +32,7 @@ These are the decisions that future work must be evaluated against. Re-read `doc
 
 - `README.md` — public project front door.
 - `docs/design.md` — M1 design rationale. The *why*. Read this before proposing design changes.
-- `docs/spec.md` — referenced from `design.md` as the function-by-function contract spec. Not yet present; expected to land alongside implementation.
+- `docs/specs.md` — referenced from `design.md` as the function-by-function contract spec. Not yet present; expected to land alongside implementation.
 
 ## Working style
 
@@ -57,3 +57,7 @@ If a task description asks for something that sounds like architecture, stop and
 - **One logical change per commit.** Conventional commit prefixes (`feat:`, `test:`, `fix:`, `docs:`, `chore:`). No "WIP" or "misc" commits.
 - **`docs/design.md` is not edited here.** If implementation reveals the design doc is wrong or incomplete, flag it in the session summary. Design doc updates happen through the planning workflow, not through Claude Code sessions.
 - **Propose rule additions, don't add them silently.** If something goes wrong that a rule would have prevented, propose adding that rule to this file and surface it for confirmation — don't edit `CLAUDE.md` unilaterally.
+
+## Solidity patterns
+
+- **Annotate storage packing.** When declaring a struct whose field order matters for storage packing, add slot-boundary comments in the code (e.g., `// --- Slot 0 (packed: 29/32 bytes) ---`) so the packing intent is explicit. Reordering a packed struct is an architectural change, not a stylistic one.

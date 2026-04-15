@@ -35,9 +35,25 @@ function) before offering the Settle button. Failure modes to handle:
 Do NOT let the user click Settle and watch the transaction revert. Gas is
 wasted even on reverting transactions.
 
+### Group organization / naming
+
+Users may create multiple groups with the same counterparty for different purposes (e.g., "needs" vs "wants", "shared apartment" vs "trips"). The contract does not store group names or categories — this is UX concern.
+
+Frontend should:
+- Allow users to name/label groups client-side.
+- Group the list by counterparty or by custom folders.
+- Show group creation date and total activity as sort/filter keys.
+
 ## M3 (Multi-party groups)
 
-(empty for now)
+### Group membership mutability
+
+M1 uses `immutable` memberA/memberB — a group is a fixed pair of wallets. When planning M3, decide:
+
+- Adding a new member to an existing group → requires mutable membership, which changes the security model.
+- OR: closing the old group and opening a new one with N+1 members → keeps immutability but loses the old group's balance history link.
+
+Recommendation default: stick with immutability per contract, deploy new contract when membership changes. Revisit if UX demand warrants otherwise.
 
 ## M4 (Off-chain integration)
 
