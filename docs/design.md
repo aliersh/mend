@@ -48,6 +48,10 @@ M1 is deliberately _not_ attempting to:
 - **Support custom split ratios.** All splits in M1 are 50/50. Custom splits introduce a much wider design space (per-expense ratios, per-group defaults, percentages versus fixed shares) that warrants its own scope.
 - **Be currency-flexible.** USDC only. No fiat denomination, no oracle, no rate conversion.
 
+## Deployment scope
+
+M1 deploys exclusively to Optimism Sepolia. Mainnet deployment, deployment to other chains, and multi-chain support are explicitly out of scope for M1 and are revisited in later milestones. Optimism Sepolia is chosen as the deployment target because it provides a low-cost L2 environment with native USDC support, sufficient for validating the contract design and demonstrating end-to-end flows without exposing real funds to early-stage code.
+
 ## Core design principle: contract-first
 
 The contract is the source of truth. All business logic — balances, splits, edits, deletes, settlement — lives on-chain. Any off-chain layer (frontend, integrations, indexer) is plumbing on top of a contract that works standalone with manual input.

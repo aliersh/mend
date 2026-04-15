@@ -58,3 +58,11 @@ Recommendation default: stick with immutability per contract, deploy new contrac
 ## M4 (Off-chain integration)
 
 (empty for now)
+
+## Deployment
+
+### Revisit deployment target
+
+M1 is Optimism Sepolia only. When the contract is mature and validated,
+evaluate deployment to Optimism mainnet. Other L2s and cross-chain support
+are speculative and depend on demand and use cases that emerge.
