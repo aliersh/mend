@@ -9,7 +9,7 @@
 
 Mend is a smart contract for tracking and settling shared expenses on-chain in USDC. M1 is a minimal two-party primitive: two wallets register as a group; either wallet can record expenses; and the debtor settles in USDC at any time, directly to the creditor's wallet, with no funds ever held by the contract itself.
 
-This document explains the **why** behind the M1 design. The function-by-function specification lives in `[spec.md](spec.md)`.
+This document explains the **why** behind the M1 design. The function-by-function specification lives in `[specs.md](specs.md)`.
 
 ## Problem statement
 
@@ -161,5 +161,5 @@ M2 and M3 are deliberately ordered with **onboarding before multi-party**. The c
 
 ## References
 
-- `[spec.md](spec.md)` — Function-by-function contract specification
+- `[specs.md](specs.md)` — Function-by-function contract specification
 - `[README.md](../README.md)` — Project front door
