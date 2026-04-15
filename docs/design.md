@@ -165,5 +165,5 @@ M2 and M3 are deliberately ordered with **onboarding before multi-party**. The c
 
 ## References
 
-- `[specs.md](specs.md)` — Function-by-function contract specification
-- `[README.md](../README.md)` — Project front door
+- [specs.md](specs.md) — Function-by-function contract specification
+- [README.md](../README.md) — Project front door

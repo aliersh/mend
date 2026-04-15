@@ -1,0 +1,17 @@
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+libs = ["lib"]
+
+# Compiler
+solc = "0.8.34"
+evm_version = "cancun"
+
+# Optimizer
+optimizer = true
+optimizer_runs = 200
+
+# Testing
+verbosity = 2
