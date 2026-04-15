@@ -84,13 +84,13 @@ Trade-off accepted: M1 has slightly worse UX (the debtor must actively settle) i
 
 This decision is reversible. Adding "either party can settle" in M2 is a one-line change. Removing it after users have built trust assumptions around debtor-only is much harder. The conservative semantics are the default.
 
-### 3. Factory-per-pair
+### 3. Per-group contract (factory pattern)
 
-M1 deploys a `MendFactory` contract whose only job is to deploy `MendGroup` contracts. Each pair of wallets gets its own `MendGroup` instance, at its own address, with the two members baked in as `immutable` constructor arguments.
+M1 deploys a `MendFactory` contract whose only job is to deploy `MendGroup` contracts. Each group gets its own `MendGroup` instance, at its own address, with the two members baked in as `immutable` constructor arguments. Multiple groups between the same pair of wallets are allowed — the factory performs no uniqueness check. Users may create several groups with the same counterparty for different purposes (e.g., "shared apartment" vs "trips"); that is a feature, not an oversight.
 
 The alternative is a single registry contract with a `mapping(uint256 => Group)` and a `groupId` parameter on every function call. That pattern is more gas-efficient at the margin (no contract deployment per group) but introduces nested mapping lookups, requires access control checks on every call (`is msg.sender a member of group N?`), and creates a class of bugs where operations on the wrong group ID are possible.
 
-Factory-per-pair wins for M1 because:
+The per-group contract pattern wins for M1 because:
 
 - **The contract surface is dramatically simpler.** Every function implicitly operates on "this group." There is no group ID to pass, no mapping lookup, no nested data structures.
 - **Access control is two lines.** `require(msg.sender == memberA || msg.sender == memberB)`. That is the entire access control story.

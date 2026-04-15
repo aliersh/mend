@@ -15,7 +15,7 @@ These are the decisions that future work must be evaluated against. Re-read `doc
 - **Contract-first.** The contract is the source of truth for balances, splits, edits, deletes, and settlement. Any off-chain layer is plumbing. Pushing logic off-chain requires strong justification — without it, the on-chain trust model collapses.
 - **Non-custodial router.** The contract never holds funds. Settlement uses ERC-20 `approve` + `safeTransferFrom` to move USDC directly debtor → creditor. Do not introduce deposit/withdrawal flows in M1.
 - **Debtor-only `settle()`.** Technically either party could pull via the allowance; M1 restricts to the debtor to match user expectations around consent. This is reversible later; reverting it is not.
-- **Factory-per-pair.** `MendFactory` deploys a fresh `MendGroup` per pair, with both members as `immutable` constructor args. No `groupId` parameters, no nested mappings. Access control is `msg.sender == memberA || msg.sender == memberB`.
+- **Per-group contract (factory pattern).** `MendFactory` deploys a fresh `MendGroup` for every `createGroup` call, with both members as `immutable` constructor args. Multiple groups per pair are allowed (different purposes, e.g., "apartment" vs "trips"); there is no uniqueness check. No `groupId` parameters, no nested mappings. Access control is `msg.sender == memberA || msg.sender == memberB`.
 - **USDC-native accounting.** All amounts are in USDC base units (6 decimals). No oracle, no fiat, no rate conversion.
 - **Soft delete.** Deleted expenses are flagged, not removed — the audit trail is part of the product.
 - **Single `int256 balance`.** memberA's net position vs. memberB. Positive = B owes A, negative = A owes B, zero = settled. Do not split into two fields.
