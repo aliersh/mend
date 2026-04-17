@@ -4,9 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Pre-implementation. The repo currently contains design docs only (`README.md`, `docs/design.md`). M1 — a two-party non-custodial IOU smart contract settling in USDC — is in design. No stack, toolchain, or source files have been committed yet; there are no build, lint, or test commands to run.
+Foundry project bootstrapped. Stack is locked; skeleton source files exist. No contract logic implemented yet.
 
-When the first code lands, this file should be updated with the actual build/test commands and any repo-specific architecture that is not already covered below.
+**Stack:** Solidity 0.8.34 · Foundry (forge 1.5.1) · OpenZeppelin Contracts v5.6.1 · forge-std v1.15.0
+
+**Commands:**
+- `forge build` — compile contracts
+- `forge test` — run test suite (no tests yet)
+- `forge test -vvvv` — with full call traces (useful when debugging)
+
+**Source files:** `src/MendFactory.sol`, `src/MendGroup.sol` — skeletons only, no logic.
 
 ## Load-bearing design constraints (from `docs/design.md`)
 
@@ -32,7 +39,12 @@ These are the decisions that future work must be evaluated against. Re-read `doc
 
 - `README.md` — public project front door.
 - `docs/design.md` — M1 design rationale. The *why*. Read this before proposing design changes.
-- `docs/specs.md` — referenced from `design.md` as the function-by-function contract spec. Not yet present; expected to land alongside implementation.
+- `docs/specs.md` — function-by-function contract specification. The *what*.
+- `docs/future-notes.md` — informal notes for M2/M3/M4. Not specs.
+- `src/` — contract source. `MendFactory.sol` and `MendGroup.sol`.
+- `test/` — Solidity test files (`.t.sol` suffix).
+- `script/` — deployment and demo scripts (`.s.sol` suffix).
+- `lib/` — dependencies (git submodules). Do not edit directly.
 
 ## Working style
 
