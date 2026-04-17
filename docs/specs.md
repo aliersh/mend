@@ -64,7 +64,7 @@ The contracts guarantee the following properties at all times. Violations are bu
 #### Critical
 
 - **iMG-001 (Balance integrity):** At any moment, `balance` equals the sum of contributions from all non-deleted expenses, where each expense contributes `+amount/2` if `payer == memberA` and `-amount/2` if `payer == memberB`.
-- **iMG-002 (Non-custodial):** The MendGroup contract never holds USDC. All transfers route directly from debtor to creditor via `safeTransferFrom`.
+- **iMG-002 (Non-custodial):** In normal operation, the MendGroup contract holds no USDC or other assets. All settlements route directly from debtor to creditor via `safeTransferFrom`. If funds are sent to the contract by mistake (an external violation of this property), they can be recovered via rescue functions — but the contract itself never initiates custody of funds.
 - **iMG-003 (Settle authorization):** When `balance != 0`, only the wallet identified as the debtor (per the sign convention in section 2.2) can successfully execute `settle()`.
 - **iMG-004 (Settle atomicity):** A successful `settle()` call sets `balance` to exactly `0` and transfers exactly `abs(balance_before)` USDC. There are no partial settlements.
 
@@ -77,6 +77,7 @@ The contracts guarantee the following properties at all times. Violations are bu
 #### Medium
 
 - **iMG-008 (Edit equivalence):** After `editExpense(id, newPayer, newAmount, newDescription)`, the contract state is equivalent to having created the expense originally with the new values (modulo `createdAt`, which is preserved from original creation).
+- **iMG-009 (Fund recovery):** Any ETH or ERC-20 tokens accidentally sent to the contract can be recovered by either group member via the rescue functions. The contract should never permanently hold funds.
 
 ### 3.3 Factory invariants
 
@@ -360,6 +361,53 @@ function getExpense(uint256 expenseId) external view returns (Expense memory)
 
 ---
 
+### 8.6 Rescue functions
+
+#### `rescueETH`
+
+##### Signature
+
+```solidity
+function rescueETH(address to) external onlyMember
+```
+
+##### Reverts
+
+- `NotAMember()` if caller is not a member.
+- Any revert propagated from the ETH transfer (e.g., recipient is a contract that rejects ETH).
+
+##### Effects
+
+1. Transfer the contract's entire ETH balance to `to` via `to.call{value: amount}("")`; revert if the call returns `false`.
+2. Emit `ETHRescued(to, amount)`.
+
+#### `rescueERC20`
+
+##### Signature
+
+```solidity
+function rescueERC20(address token, address to) external onlyMember
+```
+
+##### Reverts
+
+- `NotAMember()` if caller is not a member.
+- Any revert propagated from `token.transfer` via `SafeERC20.safeTransfer`.
+
+##### Effects
+
+1. Transfer the contract's entire balance of `token` to `to` using `SafeERC20.safeTransfer`.
+2. Emit `ERC20Rescued(token, to, amount)`.
+
+#### Notes
+
+- The `to` parameter lets the caller choose the destination. This is intentional: ERC-20 transfers don't notify the recipient contract, so the contract cannot know who sent the stuck funds. The caller decides where to send them.
+- `rescueERC20` accepts any `address token`, not just USDC. Any ERC-20 — including USDC itself — can end up in the contract by mistake and is rescuable.
+- Access control is `onlyMember`, consistent with all other state-changing functions. Both members already trust each other (they can add/edit/delete each other's expenses), so rescue access does not introduce new trust assumptions.
+- This is a standard pattern in production DeFi contracts (Aave, Compound, OpenZeppelin-based vaults).
+
+---
+
 ## 9. `MendGroup` — events
 
 ```solidity
@@ -388,6 +436,10 @@ event Settled(
     address indexed payee,
     uint256 amount
 );
+
+event ETHRescued(address indexed to, uint256 amount);
+
+event ERC20Rescued(address indexed token, address indexed to, uint256 amount);
 ```
 
 Notes:
@@ -396,6 +448,7 @@ Notes:
 - `ExpenseEdited` omits `createdAt` because it never changes after creation.
 - `ExpenseDeleted.deletedBy` captures `msg.sender` at delete time, which may differ from the original payer since any member can delete any expense.
 - `Settled` uses `payer`/`payee` rather than `debtor`/`creditor` to match conventional payment vocabulary.
+- `ETHRescued` and `ERC20Rescued` capture rescue operations for the audit trail. Either member may emit these; `to` is unconstrained.
 
 ---
 
@@ -426,6 +479,7 @@ Notes:
 
 - `InvalidPayer` carries the invalid address to distinguish `address(0)` from the wrong member without string parsing.
 - `ExpenseDoesNotExist` and `ExpenseIsDeleted` carry the offending ID so callers see exactly which expense failed the check — useful when a batch of operations fails partway.
+- Rescue functions (§8.6) reuse `NotAMember()` and introduce no new errors.
 
 ---
 
@@ -559,7 +613,6 @@ The following are intentionally NOT part of M1 and are listed here to prevent sc
 - **Pausability.** The contract cannot be paused. There is no admin role.
 - **Upgradeability.** No proxy pattern. A deployed `MendGroup` runs the code it was deployed with, forever.
 - **Fee collection.** No protocol fees on settlement.
-- **Rescue functions.** If USDC is mistakenly sent directly to a `MendGroup` address (a mistake, since the contract is non-custodial), it is stuck there. No rescue function is provided because adding one would introduce an admin role and custody risk — contradicting the non-custodial design.
 - **Group closing / archiving.** A group has no concept of being "closed". It simply stops being used. The state remains accessible and auditable forever.
 - **Member removal or substitution.** Not supported; members are `immutable`.
 - **Partial settlement.** `settle()` always settles the full balance.

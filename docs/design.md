@@ -76,6 +76,8 @@ Why this matters:
 
 **Trade-off acknowledged:** the non-custodial pattern is safer but weaker. Settlement is not guaranteed; the debtor may have an insufficient USDC balance at settlement or revoke the allowance entirely. The contract tracks what is owed but has no ability to enforce payment. A custodial model (see "Custodial settlement" in Alternatives considered) would offer a stronger settlement guarantee: once funds are deposited, they are committed. M1 accepts the weaker guarantee because the M1 trust model is between two people who already trust each other; the social relationship is the real enforcement mechanism, not the contract. If settlement guarantees become important (e.g., for adversarial or multi-party groups in M3), the custodial model can be revisited.
 
+**Note on rescue functions.** "Non-custodial" means the contract cannot pull funds from a user's wallet without a pre-approved allowance and never initiates custody as part of its normal flow. It does *not* mean the contract must permanently trap funds that were mistakenly sent to it via an external `transfer` or `selfdestruct`. The spec therefore includes `rescueETH` and `rescueERC20` (see `specs.md` §8.6), gated by the existing `onlyMember` access control — no admin role, no privileged caller, consistent with the contract's existing trust model.
+
 ### 2. Debtor-triggered settlement
 
 Even though the pre-approval pattern technically permits _either_ party to call `settle()` and pull funds (the creditor could pull from the debtor's allowance just as easily as the debtor can push), M1 restricts `settle()` to the debtor only.
