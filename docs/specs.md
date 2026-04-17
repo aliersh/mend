@@ -337,10 +337,10 @@ function usdc() external view returns (address);
 function nextExpenseId() external view returns (uint256);
 function expenses(uint256 id) external view returns (
     address payer,
-    uint256 amount,
-    string memory description,
+    uint64 createdAt,
     bool deleted,
-    uint64 createdAt
+    uint256 amount,
+    string memory description
 );
 ```
 
@@ -473,13 +473,16 @@ error DescriptionRequired();
 error CannotGroupWithSelf();
 error InvalidMemberAddress();
 error InvalidUsdcAddress();
+
+// Rescue
+error ETHTransferFailed();
 ```
 
 Notes:
 
 - `InvalidPayer` carries the invalid address to distinguish `address(0)` from the wrong member without string parsing.
 - `ExpenseDoesNotExist` and `ExpenseIsDeleted` carry the offending ID so callers see exactly which expense failed the check — useful when a batch of operations fails partway.
-- Rescue functions (§8.6) reuse `NotAMember()` and introduce no new errors.
+- Rescue functions (§8.6) add `ETHTransferFailed()` for low-level ETH transfer failures; all other reverts reuse `NotAMember()`.
 
 ---
 
