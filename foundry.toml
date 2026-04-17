@@ -15,3 +15,7 @@ optimizer_runs = 200
 
 # Testing
 verbosity = 2
+
+# Enables `forge test --fork-url optimism_sepolia`; fork tests read the env var directly.
+[rpc_endpoints]
+optimism_sepolia = "${OP_SEPOLIA_RPC_URL}"
