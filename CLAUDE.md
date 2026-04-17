@@ -4,16 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Foundry project bootstrapped. Stack is locked; skeleton source files exist. No contract logic implemented yet.
+M1 contracts implemented (`MendFactory.sol`, `MendGroup.sol`). Tests not yet written — `test/` and `script/` are empty. Next step: test suite.
 
 **Stack:** Solidity 0.8.34 · Foundry (forge 1.5.1) · OpenZeppelin Contracts v5.6.1 · forge-std v1.15.0
 
 **Commands:**
 - `forge build` — compile contracts
-- `forge test` — run test suite (no tests yet)
+- `forge test` — run test suite (empty until M1 tests land)
 - `forge test -vvvv` — with full call traces (useful when debugging)
+- `forge fmt` — format Solidity sources
+- `forge lint` — run forge-lint (suppressions via `// forge-lint: disable-next-line(rule)` comments)
 
-**Source files:** `src/MendFactory.sol`, `src/MendGroup.sol` — skeletons only, no logic.
+**Source files:** `src/MendFactory.sol`, `src/MendGroup.sol` — M1 implementation complete; see `docs/specs.md` for the per-function spec.
 
 ## Load-bearing design constraints (from `docs/design.md`)
 
@@ -73,3 +75,6 @@ If a task description asks for something that sounds like architecture, stop and
 ## Solidity patterns
 
 - **Annotate storage packing.** When declaring a struct whose field order matters for storage packing, add slot-boundary comments in the code (e.g., `// --- Slot 0 (packed: 29/32 bytes) ---`) so the packing intent is explicit. Reordering a packed struct is an architectural change, not a stylistic one.
+- **Immutable naming.** Public immutables use camelCase (not SCREAMING_SNAKE_CASE) because they generate ABI getters. Suppress forge-lint's screaming-snake-case-immutable note with per-line disable comments. Internal/private immutables (if any are added) should follow SCREAMING_SNAKE_CASE.
+- **`remappings.txt` is for the IDE, not Foundry.** Foundry reads remappings from `foundry.toml` and `forge remappings`; the VS Code Solidity LSP doesn't. Keep `remappings.txt` at repo root in sync with the lib/ submodules so the IDE doesn't show phantom "source not found" errors on OZ/forge-std imports.
+- **Public struct getters return fields in declaration order.** When a `mapping(K => Struct)` is `public`, the auto-generated getter returns the struct's fields in the order they are declared, not in any logical or spec-listed order. If the spec lists getter return values, the order must match the struct field order exactly.
