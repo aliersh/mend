@@ -69,11 +69,7 @@ contract MendGroup is ReentrancyGuard {
     /// @param description Human-readable description.
     /// @param createdAt Unix timestamp at which the expense was first created.
     event ExpenseAdded(
-        uint256 indexed expenseId,
-        address indexed payer,
-        uint256 amount,
-        string description,
-        uint64 createdAt
+        uint256 indexed expenseId, address indexed payer, uint256 amount, string description, uint64 createdAt
     );
 
     /// @notice Emitted when an expense is edited. `createdAt` is intentionally
@@ -82,12 +78,7 @@ contract MendGroup is ReentrancyGuard {
     /// @param payer New payer (may equal old payer).
     /// @param amount New amount in USDC base units.
     /// @param description New description.
-    event ExpenseEdited(
-        uint256 indexed expenseId,
-        address indexed payer,
-        uint256 amount,
-        string description
-    );
+    event ExpenseEdited(uint256 indexed expenseId, address indexed payer, uint256 amount, string description);
 
     /// @notice Emitted when an expense is soft-deleted.
     /// @param expenseId ID of the deleted expense.
@@ -122,9 +113,9 @@ contract MendGroup is ReentrancyGuard {
     ///      ~3 storage slots per expense — see specs.md §4.1.
     struct Expense {
         // --- Slot 0 (packed: 29/32 bytes) ---
-        address payer;     // 20 bytes
-        uint64 createdAt;  // 8 bytes
-        bool deleted;      // 1 byte
+        address payer; // 20 bytes
+        uint64 createdAt; // 8 bytes
+        bool deleted; // 1 byte
         // --- Slot 1 ---
         uint256 amount;
         // --- Slot 2+ (variable, dynamic string) ---
@@ -225,13 +216,8 @@ contract MendGroup is ReentrancyGuard {
         expenseId = nextExpenseId;
         uint64 createdAt = uint64(block.timestamp);
 
-        expenses[expenseId] = Expense({
-            payer: payer,
-            createdAt: createdAt,
-            deleted: false,
-            amount: amount,
-            description: description
-        });
+        expenses[expenseId] =
+            Expense({payer: payer, createdAt: createdAt, deleted: false, amount: amount, description: description});
 
         nextExpenseId = expenseId + 1;
 
@@ -252,12 +238,10 @@ contract MendGroup is ReentrancyGuard {
     /// @dev Reverts InvalidPayer if newPayer is neither memberA nor memberB.
     /// @dev Reverts DescriptionRequired if newDescription is empty.
     /// @dev `createdAt` is preserved across edits.
-    function editExpense(
-        uint256 expenseId,
-        address newPayer,
-        uint256 newAmount,
-        string calldata newDescription
-    ) external onlyMember {
+    function editExpense(uint256 expenseId, address newPayer, uint256 newAmount, string calldata newDescription)
+        external
+        onlyMember
+    {
         if (expenseId >= nextExpenseId) revert ExpenseDoesNotExist(expenseId);
         Expense memory old = expenses[expenseId];
         if (old.deleted) revert ExpenseIsDeleted(expenseId);
@@ -347,7 +331,7 @@ contract MendGroup is ReentrancyGuard {
     // forge-lint: disable-next-line(mixed-case-function)
     function rescueETH(address to) external onlyMember {
         uint256 amount = address(this).balance;
-        (bool ok, ) = to.call{value: amount}("");
+        (bool ok,) = to.call{value: amount}("");
         if (!ok) revert ETHTransferFailed();
         emit ETHRescued(to, amount);
     }
