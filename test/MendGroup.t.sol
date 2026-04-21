@@ -9,7 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {MendGroup} from "../src/MendGroup.sol";
 import {ReentrantToken} from "./mocks/ReentrantToken.sol";
 
-/// @dev Tiny contract that reverts on receive() — used to force ETHTransferFailed.
+/// @notice Reverts on `receive()` to force `ETHTransferFailed`.
 contract ETHRejector {
     receive() external payable {
         revert("nope");
@@ -17,7 +17,7 @@ contract ETHRejector {
 }
 
 contract MendGroupTest is Test {
-    // Re-declared here so vm.expectEmit can match topic signatures.
+    // For vm.expectEmit topic matching.
     event ExpenseAdded(
         uint256 indexed expenseId, address indexed payer, uint256 amount, string description, uint64 createdAt
     );

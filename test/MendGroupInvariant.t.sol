@@ -7,12 +7,12 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 import {MendGroup} from "../src/MendGroup.sol";
 
-/// @dev Bounded handler that drives random add/edit/delete sequences against
-///      a single MendGroup. Each action is wrapped in try/catch so a revert
-///      doesn't sink the fuzz run. settle() is intentionally excluded — if it
-///      were included, ghost-state cleanup would be required to keep the
-///      recomputed sum-of-contributions in sync with the zeroed contract
-///      balance. Settle has dedicated unit + reentrancy coverage.
+/// @notice Bounded handler that drives random add/edit/delete sequences against
+///         a single MendGroup. Each action is wrapped in try/catch so a revert
+///         doesn't sink the fuzz run. `settle()` is intentionally excluded — if
+///         it were included, ghost-state cleanup would be required to keep the
+///         recomputed sum-of-contributions in sync with the zeroed contract
+///         balance. Settle has dedicated unit + reentrancy coverage.
 contract MendGroupHandler is Test {
     MendGroup internal immutable GROUP;
     address internal immutable MEMBER_A;

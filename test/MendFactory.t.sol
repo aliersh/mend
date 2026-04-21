@@ -67,8 +67,7 @@ contract MendFactoryTest is Test {
     }
 
     function test_CreateGroup_EmitsGroupCreated() public {
-        // Precompute the address the factory will deploy next (CREATE, not CREATE2),
-        // so all three indexed topics in GroupCreated can be matched.
+        // Precompute the CREATE address for indexed topic matching.
         address predicted = vm.computeCreateAddress(address(factory), vm.getNonce(address(factory)));
 
         vm.expectEmit(true, true, true, true, address(factory));

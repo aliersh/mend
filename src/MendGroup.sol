@@ -10,8 +10,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///         between two fixed members and settles in USDC. The contract never
 ///         holds funds in normal operation — settlement routes USDC directly
 ///         from debtor to creditor via ERC-20 `approve` + `safeTransferFrom`.
-/// @dev See `docs/specs.md` for the authoritative function-by-function spec
-///      and `docs/design.md` for the rationale behind the design choices.
 contract MendGroup is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -72,8 +70,7 @@ contract MendGroup is ReentrancyGuard {
         uint256 indexed expenseId, address indexed payer, uint256 amount, string description, uint64 createdAt
     );
 
-    /// @notice Emitted when an expense is edited. `createdAt` is intentionally
-    ///         omitted because it is preserved across edits.
+    /// @notice Emitted when an expense is edited.
     /// @param expenseId ID of the edited expense.
     /// @param payer New payer (may equal old payer).
     /// @param amount New amount in USDC base units.
@@ -106,11 +103,7 @@ contract MendGroup is ReentrancyGuard {
     // Types
     // -----------------------------------------------------------------------
 
-    /// @notice One recorded shared expense.
-    /// @dev Field order is load-bearing for storage packing. `payer` (20),
-    ///      `createdAt` (8), and `deleted` (1) total 29 bytes and pack into a
-    ///      single 32-byte slot. Reordering breaks packing silently and adds
-    ///      ~3 storage slots per expense — see specs.md §4.1.
+    /// @notice One recorded shared expense. Field order is load-bearing for storage packing — do not reorder.
     struct Expense {
         // --- Slot 0 (packed: 29/32 bytes) ---
         address payer; // 20 bytes
@@ -126,15 +119,12 @@ contract MendGroup is ReentrancyGuard {
     // Immutable state
     // -----------------------------------------------------------------------
 
-    /// @notice First member of the group (the wallet that called `createGroup` on the factory).
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     address public immutable memberA;
 
-    /// @notice Second member of the group (the counterparty passed to `createGroup`).
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     address public immutable memberB;
 
-    /// @notice USDC token used for settlement. All amounts are denominated in its base units (6 decimals).
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     address public immutable usdc;
 
@@ -146,7 +136,6 @@ contract MendGroup is ReentrancyGuard {
     ///         memberA; negative means memberA owes memberB; zero means settled.
     int256 public balance;
 
-    /// @notice Mapping from expense ID to Expense. Unused IDs return a zero-valued struct.
     mapping(uint256 => Expense) public expenses;
 
     /// @notice Next expense ID to be assigned. Starts at 0 and only increases — IDs are never reused.
@@ -160,9 +149,6 @@ contract MendGroup is ReentrancyGuard {
     /// @param _memberA First member address.
     /// @param _memberB Second member address.
     /// @param _usdc USDC token address.
-    /// @dev Reverts InvalidMemberAddress if either member is the zero address.
-    /// @dev Reverts CannotGroupWithSelf if both members are the same address.
-    /// @dev Reverts InvalidUsdcAddress if `_usdc` is the zero address.
     constructor(address _memberA, address _memberB, address _usdc) {
         if (_memberA == address(0) || _memberB == address(0)) revert InvalidMemberAddress();
         if (_memberA == _memberB) revert CannotGroupWithSelf();
@@ -177,15 +163,11 @@ contract MendGroup is ReentrancyGuard {
     // Modifiers
     // -----------------------------------------------------------------------
 
-    /// @dev Restricts a function to memberA or memberB. The check is delegated
-    ///      to an internal function rather than written inline so the bytecode
-    ///      isn't duplicated at every call site (modifiers are inlined).
     modifier onlyMember() {
         _requireMember();
         _;
     }
 
-    /// @dev Reverts NotAMember if `msg.sender` is neither member.
     function _requireMember() internal view {
         if (msg.sender != memberA && msg.sender != memberB) revert NotAMember();
     }
@@ -194,16 +176,12 @@ contract MendGroup is ReentrancyGuard {
     // External / public functions
     // -----------------------------------------------------------------------
 
-    /// @notice Record a new shared expense and update the balance.
+    /// @notice Record a new shared expense and update the balance. Odd amounts lose
+    ///         1 micro-USDC to integer division; the payer absorbs the dust.
     /// @param payer Wallet that paid for the expense (memberA or memberB).
     /// @param amount Amount in USDC base units (must be > 0).
     /// @param description Human-readable description (must be non-empty).
     /// @return expenseId The monotonically assigned ID of the new expense.
-    /// @dev Reverts NotAMember if caller is not a member.
-    /// @dev Reverts AmountMustBePositive if amount is zero.
-    /// @dev Reverts InvalidPayer if payer is neither memberA nor memberB.
-    /// @dev Reverts DescriptionRequired if description is empty.
-    /// @dev Integer division means odd amounts lose 1 micro-USDC of precision; the payer absorbs the dust.
     function addExpense(address payer, uint256 amount, string calldata description)
         external
         onlyMember
@@ -231,13 +209,6 @@ contract MendGroup is ReentrancyGuard {
     /// @param newPayer New payer (memberA or memberB).
     /// @param newAmount New amount in USDC base units (must be > 0).
     /// @param newDescription New description (must be non-empty).
-    /// @dev Reverts NotAMember if caller is not a member.
-    /// @dev Reverts ExpenseDoesNotExist if expenseId has never been issued.
-    /// @dev Reverts ExpenseIsDeleted if the expense has been soft-deleted.
-    /// @dev Reverts AmountMustBePositive if newAmount is zero.
-    /// @dev Reverts InvalidPayer if newPayer is neither memberA nor memberB.
-    /// @dev Reverts DescriptionRequired if newDescription is empty.
-    /// @dev `createdAt` is preserved across edits.
     function editExpense(uint256 expenseId, address newPayer, uint256 newAmount, string calldata newDescription)
         external
         onlyMember
@@ -262,10 +233,6 @@ contract MendGroup is ReentrancyGuard {
 
     /// @notice Soft-delete an expense and reverse its contribution to balance.
     /// @param expenseId ID of the expense to delete.
-    /// @dev Reverts NotAMember if caller is not a member.
-    /// @dev Reverts ExpenseDoesNotExist if expenseId has never been issued.
-    /// @dev Reverts ExpenseIsDeleted if the expense has already been soft-deleted.
-    /// @dev Only the `deleted` flag changes; all other fields are preserved for the audit trail.
     function deleteExpense(uint256 expenseId) external onlyMember {
         if (expenseId >= nextExpenseId) revert ExpenseDoesNotExist(expenseId);
         Expense storage e = expenses[expenseId];
@@ -278,11 +245,6 @@ contract MendGroup is ReentrancyGuard {
     }
 
     /// @notice Settle the outstanding balance: the debtor pays the creditor in USDC.
-    /// @dev Reverts AlreadySettled if balance is zero (checked first, before debtor resolution).
-    /// @dev Reverts NotDebtor if caller is not the current debtor.
-    /// @dev Any USDC transfer failure (insufficient balance/allowance) propagates and rolls back the tx.
-    /// @dev Defense in depth: balance is zeroed before the external call (CEI), and the
-    ///      function is also guarded by `nonReentrant`.
     function settle() external nonReentrant {
         int256 b = balance;
         if (b == 0) revert AlreadySettled();
@@ -293,15 +255,13 @@ contract MendGroup is ReentrancyGuard {
         if (b > 0) {
             debtor = memberB;
             creditor = memberA;
-            // Cast to uint256 is safe: b > 0, so the high bit is unset.
+            // Safe: b > 0 so the high bit is unset.
             // forge-lint: disable-next-line(unsafe-typecast)
             amount = uint256(b);
         } else {
             debtor = memberA;
             creditor = memberB;
-            // Cast is safe: b < 0 so -b > 0 and fits in uint256. Solidity 0.8
-            // checked arithmetic in addExpense/editExpense reverts long before
-            // b could approach int256.min, so unary negation cannot overflow here.
+            // Safe: b < 0 bounded by expense arithmetic, cannot approach int256.min.
             // forge-lint: disable-next-line(unsafe-typecast)
             amount = uint256(-b);
         }
@@ -318,7 +278,6 @@ contract MendGroup is ReentrancyGuard {
     /// @notice Read an expense by ID, returned as a struct.
     /// @param expenseId ID of the expense.
     /// @return The full Expense struct (including the `deleted` flag).
-    /// @dev Reverts ExpenseDoesNotExist if expenseId has never been issued.
     function getExpense(uint256 expenseId) external view returns (Expense memory) {
         if (expenseId >= nextExpenseId) revert ExpenseDoesNotExist(expenseId);
         return expenses[expenseId];
@@ -326,8 +285,6 @@ contract MendGroup is ReentrancyGuard {
 
     /// @notice Send the contract's entire ETH balance to `to`.
     /// @param to Destination address.
-    /// @dev Reverts NotAMember if caller is not a member.
-    /// @dev Reverts ETHTransferFailed if the low-level call returns false.
     // forge-lint: disable-next-line(mixed-case-function)
     function rescueETH(address to) external onlyMember {
         uint256 amount = address(this).balance;
@@ -339,8 +296,6 @@ contract MendGroup is ReentrancyGuard {
     /// @notice Send the contract's entire balance of `token` to `to`.
     /// @param token ERC-20 token address (any ERC-20, including USDC).
     /// @param to Destination address.
-    /// @dev Reverts NotAMember if caller is not a member.
-    /// @dev Any token.transfer failure propagates via SafeERC20.
     function rescueERC20(address token, address to) external onlyMember {
         uint256 amount = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransfer(to, amount);
@@ -351,14 +306,9 @@ contract MendGroup is ReentrancyGuard {
     // Internal helpers
     // -----------------------------------------------------------------------
 
-    /// @dev Returns the signed contribution that `payer`'s `amount` makes to `balance`:
-    ///      `+amount/2` if `payer == memberA`, `-amount/2` otherwise. Callers must
-    ///      validate that `payer` is one of the two members before invoking this
-    ///      helper for external inputs; for trusted storage reads (delete/edit
-    ///      reversal) the value is already known to be a member.
     function _signedContribution(address payer, uint256 amount) internal view returns (int256) {
-        // Cast is safe: `amount / 2` is bounded by uint256.max / 2, which is
-        // below int256.max, so the high bit is always unset.
+        // Precondition: caller has validated `payer` is memberA or memberB.
+        // Safe: amount / 2 ≤ uint256.max / 2 < int256.max.
         // forge-lint: disable-next-line(unsafe-typecast)
         int256 half = int256(amount / 2);
         return payer == memberA ? half : -half;

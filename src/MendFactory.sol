@@ -33,7 +33,6 @@ contract MendFactory {
     // State
     // -------------------------------------------------------------------------
 
-    /// @notice USDC token address forwarded to every deployed MendGroup.
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     address public immutable usdc;
 
@@ -53,7 +52,7 @@ contract MendFactory {
     // -------------------------------------------------------------------------
 
     /// @notice Deploys a new MendGroup between msg.sender and otherMember.
-    /// @dev Multiple groups between the same pair are allowed — no uniqueness check.
+    ///         Multiple groups per pair are allowed; no uniqueness check.
     /// @param otherMember The second member of the group. Must be non-zero and different from msg.sender.
     /// @return group Address of the deployed MendGroup.
     function createGroup(address otherMember) external returns (address group) {

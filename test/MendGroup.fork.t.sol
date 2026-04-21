@@ -6,12 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {MendGroup} from "../src/MendGroup.sol";
 
-/// @dev Fork tests against real USDC on Optimism Sepolia. Proves `SafeERC20`
-///      interactions (`safeTransferFrom` in settle, `safeTransfer` in
-///      rescueERC20) work end-to-end against Circle's FiatTokenV2_2 proxy,
-///      not just the ERC20Mock used in the unit suite. Skips cleanly when
-///      OP_SEPOLIA_RPC_URL is unset so default `forge test` and CI remain
-///      network-free.
+/// @notice Fork tests against real USDC on Optimism Sepolia. Skips when
+///         `OP_SEPOLIA_RPC_URL` is unset.
 contract MendGroupForkTest is Test {
     /// USDC on Optimism Sepolia (Circle official). Source: .env.
     address internal constant USDC = 0x5fd84259d66Cd46123540766Be93DFE6D43130D7;
@@ -26,10 +22,7 @@ contract MendGroupForkTest is Test {
     address internal memberB;
 
     function setUp() public {
-        // `vm.rpcUrl("optimism_sepolia")` with `${OP_SEPOLIA_RPC_URL}` in
-        // foundry.toml errors when the env var is unset (it cannot expand),
-        // so the guard must read via `envOr` first and skip before we touch
-        // any fork-related vm cheat.
+        // `vm.rpcUrl` would error on unset env — read via `envOr` so we can skip gracefully.
         string memory url = vm.envOr("OP_SEPOLIA_RPC_URL", string(""));
         if (bytes(url).length == 0) {
             vm.skip(true);
@@ -50,16 +43,11 @@ contract MendGroupForkTest is Test {
         vm.label(address(group), "MendGroup");
     }
 
-    /// @dev USDC on OP Sepolia is an upgradeable proxy; the `adjust=true`
-    ///      overload of `deal` also bumps totalSupply so the token's internal
-    ///      accounting stays consistent if its implementation references it.
     function _fundWithUsdc(address to, uint256 amount) internal {
+        // `adjust=true` also bumps totalSupply — USDC is a proxy.
         deal(USDC, to, amount, true);
     }
 
-    /// Proves `SafeERC20.safeTransferFrom` works against real USDC end-to-end.
-    /// One direction is sufficient: the mock suite covers both directions;
-    /// the fork's unique value is establishing real USDC accepts the happy path.
     function test_Fork_SettleFlow() public {
         uint256 amount = 100_000_000; // 100 USDC — balance = +50e6, debtor = memberB.
 
@@ -82,8 +70,6 @@ contract MendGroupForkTest is Test {
         assertEq(group.balance(), 0, "balance zeroed");
     }
 
-    /// Proves `SafeERC20.safeTransfer` works against real USDC when the
-    /// contract holds the token — the iMG-009 fund-recovery invariant.
     function test_Fork_RescueERC20_RealUsdc() public {
         uint256 stuck = 250_000_000; // 250 USDC sent to the contract by mistake.
         _fundWithUsdc(address(group), stuck);
