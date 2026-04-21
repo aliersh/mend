@@ -6,20 +6,19 @@
 [![Solidity](https://img.shields.io/badge/solidity-0.8.34-363636)](foundry.toml)
 [![Built with Foundry](https://img.shields.io/badge/built%20with-Foundry-black)](https://getfoundry.sh)
 [![Network](https://img.shields.io/badge/network-Optimism%20Sepolia-FF0420)](https://sepolia-optimism.etherscan.io)
+[![MendFactory](https://img.shields.io/badge/MendFactory-0x7c6c…091da-FF0420)](https://testnet-explorer.optimism.io/address/0x7c6c933b036fce0d6663ab4f3866acdc2a5091da)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 <!--
   Badges to add later, when the supporting infrastructure exists:
   - Test coverage — once `forge coverage` is wired into CI (e.g., Codecov)
-  - Deployment: contract address / Etherscan link — once MendFactory is deployed to Optimism Sepolia
-  - Contract verification status — once verified on Etherscan / Sourcify
   - Audit / formal verification badge — if and when an audit is completed
   - Gas snapshot — once a reproducible gas baseline is tracked
 -->
 
 Mend is a non-custodial primitive for shared expenses. Members deploy a group, record expenses against it, and settle the running balance in USDC directly between their wallets — atomically, on-chain, with no third party in the middle.
 
-**Status:** M1 contracts and tests implemented. Not yet deployed. See [`docs/spec.md`](docs/spec.md) for the full specification and [`docs/design.md`](docs/design.md) for design rationale.
+**Status:** M1 deployed to Optimism Sepolia. `MendFactory` at [`0x7c6c933b036fce0d6663ab4f3866acdc2a5091da`](https://testnet-explorer.optimism.io/address/0x7c6c933b036fce0d6663ab4f3866acdc2a5091da). See [`docs/specs.md`](docs/specs.md) for the full specification and [`docs/design.md`](docs/design.md) for design rationale.
 
 ---
 
@@ -50,13 +49,13 @@ Directional, not committed. M1 is the current focus; everything beyond it is exp
 
 | Milestone | Theme                                                            | Status      |
 | --------- | ---------------------------------------------------------------- | ----------- |
-| **M1**    | Two-party non-custodial IOU contract                             | Implementation complete, pre-deployment |
+| **M1**    | Two-party non-custodial IOU contract                             | Deployed to Optimism Sepolia            |
 | **M2**    | Onboarding — embedded smart-account auth, gasless UX             | Exploratory |
 | **M3**    | Multi-party groups and debt graph simplification                 | Exploratory |
 | **M4**    | Off-chain integration — bank-feed ingestion, auto-classification | Speculative |
 
 
-See `[docs/design.md](docs/design.md)` for the reasoning behind the milestone ordering.
+See [docs/design.md](docs/design.md) for the reasoning behind the milestone ordering.
 
 ---
 
