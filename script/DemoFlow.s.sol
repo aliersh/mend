@@ -54,13 +54,13 @@ contract DemoFlow is Script, StdCheats {
 
         vm.prank(bob);
         uint256 groceriesId = group.addExpense(bob, 50_000_000, "groceries");
-        console.log("[#1] bob   paid  50 USDC for 'groceries'");
+        console.log("[#1] bob paid 50 USDC for 'groceries'");
         console.log(string.concat("     -> offsets partially. balance = ", _fmtBalance(group.balance())));
         console.log("");
 
         vm.prank(alice);
         uint256 concertId = group.addExpense(alice, 80_000_000, "concert tickets");
-        console.log("[#2] alice paid  80 USDC for 'concert tickets'");
+        console.log("[#2] alice paid 80 USDC for 'concert tickets'");
         console.log(string.concat("     -> bob owes more. balance = ", _fmtBalance(group.balance())));
         console.log("");
 
