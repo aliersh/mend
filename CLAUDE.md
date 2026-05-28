@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-M1 contracts implemented (`MendFactory.sol`, `MendGroup.sol`). Tests not yet written — `test/` and `script/` are empty. Next step: test suite.
+M1 complete: contracts (`MendFactory.sol`, `MendGroup.sol`) implemented, tested (72 tests — unit + fuzz + invariant + fork, all passing), and deployed to Optimism Sepolia. M2 (onboarding) in design — see `docs/design.md`, now the living design doc. M2 migrates deployment to Base Sepolia and adds an off-chain application layer (Privy + Pimlico + Kernel, Vite SPA); no contract changes.
 
 **Stack:** Solidity 0.8.34 · Foundry (forge 1.5.1) · OpenZeppelin Contracts v5.6.1 · forge-std v1.15.0
 
 **Commands:**
 - `forge build` — compile contracts
-- `forge test` — run test suite (empty until M1 tests land)
+- `forge test` — run test suite
 - `forge test -vvvv` — with full call traces (useful when debugging)
 - `forge fmt` — format Solidity sources
 - `forge lint` — run forge-lint (suppressions via `// forge-lint: disable-next-line(rule)` comments)
@@ -40,7 +40,7 @@ These are the decisions that future work must be evaluated against. Re-read `doc
 ## Repo layout
 
 - `README.md` — public project front door.
-- `docs/design.md` — M1 design rationale. The *why*. Read this before proposing design changes.
+- `docs/design.md` — living design rationale for Mend (currently through M2). The *why*. Read this before proposing design changes.
 - `docs/specs.md` — function-by-function contract specification. The *what*.
 - `docs/future-notes.md` — informal notes for M2/M3/M4. Not specs.
 - `src/` — contract source. `MendFactory.sol` and `MendGroup.sol`.
@@ -69,7 +69,7 @@ If a task description asks for something that sounds like architecture, stop and
 
 - **Plan Mode before any non-trivial task.** Produce a plan, wait for approval, then execute. Do not jump straight to edits.
 - **One logical change per commit.** Conventional commit prefixes (`feat:`, `test:`, `fix:`, `docs:`, `chore:`). No "WIP" or "misc" commits.
-- **`docs/design.md` is not edited here.** If implementation reveals the design doc is wrong or incomplete, flag it in the session summary. Design doc updates happen through the planning workflow, not through Claude Code sessions.
+- **`docs/design.md` is updated only through deliberate planning (the project-workflow advisor role), never as a side effect of implementation.** An execution session that finds the design doc wrong or incomplete flags it in the session summary rather than editing it.
 - **Propose rule additions, don't add them silently.** If something goes wrong that a rule would have prevented, propose adding that rule to this file and surface it for confirmation — don't edit `CLAUDE.md` unilaterally.
 
 ## Solidity patterns

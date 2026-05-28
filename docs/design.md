@@ -1,171 +1,154 @@
-# Mend — M1 Design Document
+# Mend — Design Document
 
 **Author:** Ariel Diaz
-**Last updated:** April 9, 2026
+**Last updated:** May 28, 2026
 
 ---
 
 ## Overview
 
-Mend is a smart contract for tracking and settling shared expenses on-chain in USDC. M1 is a minimal two-party primitive: two wallets register as a group; either wallet can record expenses; and the debtor settles in USDC at any time, directly to the creditor's wallet, with no funds ever held by the contract itself.
+Mend is a non-custodial system for tracking and settling shared expenses on-chain in USDC. It has two layers: a smart contract that is the source of truth for balances, splits, edits, deletes, and settlement; and an application layer that lets people use it without managing wallets, gas, or seed phrases.
 
-This document explains the **why** behind the M1 design. The function-by-function specification lives in `[specs.md](specs.md)`.
+The contract is implemented, tested, and deployed. The application layer is the current focus — the milestone labeled M2 in the roadmap. Throughout, the contract never holds funds: settlement routes USDC directly from the debtor's wallet to the creditor's wallet.
+
+This document explains the design and the reasoning behind it. The function-by-function contract specification lives in [`specs.md`](specs.md).
 
 ## Problem statement
 
-Tracking shared expenses between people is a well-served problem space. Tools like Splitwise, Tricount, and SplitMyExpenses have tens of millions of combined users and handle the _tracking_ side well. Most now offer payment integrations, including Venmo, PayPal, bank transfers, and in-app wallets, so settlement is no longer an unsolved problem. It is, however, still **trust-based**.
+Tracking shared expenses is a well-served problem. Splitwise, Tricount, and similar tools handle it for tens of millions of users, and most now integrate payments — Venmo, PayPal, bank transfer. But the ledger and the money movement stay two separate systems. The app marks a debt settled because a payment provider reported a transfer, or because someone tapped a button saying they paid. The link between what is owed and what was paid is an assertion, not a verifiable fact.
 
-Even with integrated payments, the ledger and the money movement remain two separate systems. The app marks a debt as settled either because a payment provider reported a transfer or because a user tapped a button indicating they paid. The link between "what is owed" and "what was paid" is an assertion, not a verifiable on-chain fact. If the payment fails silently, the amount is wrong, or the external provider's state diverges from the app's state, the ledger becomes unreliable, and there is no independent way to audit it.
+On-chain, balances and settlement live in the same contract, so settlement is the same event as the balance update. The payment is the proof.
 
-A blockchain-backed implementation closes that gap. When balances and settlement live in the same contract, settlement is no longer a trust assertion; it is the same on-chain event as the balance update. The payment _is_ the proof.
+That advantage is real but conditional, and it is worth being honest about where it applies. Between two people in the same country who trust each other and share a payment rail like Venmo, the on-chain model adds friction — acquiring USDC, settling in a stablecoin — for guarantees they do not need. Its value is sharpest where existing rails fail: across borders and currencies, where no shared payment app works; where the parties do not fully trust each other; and where settlement is programmable, such as netting a multi-party debt cycle in a single atomic transaction. The near-term goal is to prove the technology works end-to-end. The milestones that follow focus on the scenarios where it wins decisively.
 
 ## Value proposition
 
-Mend's on-chain approach provides three properties that integrated payment expense trackers do not:
+The on-chain approach provides three properties that integrated-payment expense trackers do not:
 
-1. **Atomicity.** The balance update and the money movement are the same transaction. There is no intermediate state where the ledger says "settled," but the funds have not moved, or where a payment succeeds but the app's balance is not updated. Settlement either happens completely or not at all.
-2. **Auditability.** The full expense history — additions, edits, deletions, settlements — lives on-chain. Any party can independently reconstruct the complete ledger without depending on a third-party server, API, or export feature. The audit trail is a public, immutable record.
-3. **No platform dependency.** The contract is the product. It works with any wallet and any block explorer. There is no Splitwise account, no Venmo account, no API that can be deprecated, geo-restricted, or shut down. The ledger survives the app that created it.
+1. **Atomicity.** The balance update and the money movement are the same transaction. There is no intermediate state where the ledger says "settled" but the funds have not moved, or where a payment succeeds but the balance is not updated.
+2. **Auditability.** The full history — additions, edits, deletions, settlements — lives on-chain. Any party can reconstruct the complete ledger without depending on a third-party server or export feature.
+3. **No platform dependency.** The contract is the product. It works with any wallet and any block explorer; there is no account that can be deprecated, geo-restricted, or shut down. In the application layer this property carries one condition — see [Trust model](#trust-model-and-security-considerations).
 
-These properties come with a real cost in M1: both members must be crypto-native and manage their own wallets. That cost is addressed in M2 (onboarding), not here.
+These properties matter most in the scenarios named above. For the trusting, same-country case they are nice-to-haves, not reasons to switch.
 
 ## Goals
 
-M1 must:
-
-1. **Be correct.** The accounting math must hold under all sequences of operations. This is verified through unit tests, fuzz tests, and an invariant test suite.
-2. **Be demonstrable.** Any engineer should be able to clone the repository, run a single command, and exercise the full lifecycle (create group, add expenses, edit, delete, settle) end-to-end on a public testnet.
-3. **Be production-quality within its scope.** No corners cut that would be embarrassing to undo later. NatSpec on every public function. Sensible naming. OpenZeppelin where appropriate. No test-only hacks left in the contract.
-4. **Be bounded.** The implementation must remain small enough to complete in a focused single-developer effort. Anything outside that budget is out of scope.
+- **Correct.** The accounting holds under every sequence of operations, verified by unit, fuzz, and invariant tests.
+- **Usable by non-crypto users.** A person can onboard, track expenses, and settle without a wallet extension, a seed phrase, or a gas token.
+- **Demonstrable.** The full lifecycle — create a group, add expenses, edit, delete, settle — runs end-to-end on a public testnet.
+- **Production-quality within scope.** No corners cut that would be embarrassing to undo. Complete NatSpec, sensible naming, OpenZeppelin where appropriate, no test-only hacks in the contract.
 
 ## Non-goals
 
-M1 is deliberately _not_ attempting to:
-
-- **Be impressive on its own.** The product thesis lives in M2 (onboarding). M1's role is to be a correct, boring foundation.
-- **Be usable by non-crypto users.** M1 assumes that both members are crypto-native and can manage their own wallets. Onboarding non-crypto users is the focus of M2 and gets its own scope.
-- **Solve the multi-party debt graph problem.** Two wallets only. Graph simplification (where A→B→C→A cancels to zero) is interesting and belongs in M3.
-- **Support custom split ratios.** All splits in M1 are 50/50. Custom splits introduce a much wider design space (per-expense ratios, per-group defaults, percentages versus fixed shares) that warrants its own scope.
-- **Be currency-flexible.** USDC only. No fiat denomination, no oracle, no rate conversion.
-
-## Deployment scope
-
-M1 deploys exclusively to Optimism Sepolia. Mainnet deployment, deployment to other chains, and multi-chain support are explicitly out of scope for M1 and are revisited in later milestones. Optimism Sepolia is chosen as the deployment target because it provides a low-cost L2 environment with native USDC support, sufficient for validating the contract design and demonstrating end-to-end flows without exposing real funds to early-stage code.
-
-## Core design principle: contract-first
-
-The contract is the source of truth. All business logic — balances, splits, edits, deletes, settlement — lives on-chain. Any off-chain layer (frontend, integrations, indexer) is plumbing on top of a contract that works standalone with manual input.
-
-This is a deliberate inversion of the common pattern in which a backend holds the logic and a thin contract handles token transfers. The reason matters: if the contract is the source of truth, the audit trail is real, the settlement is real, and the trust model is auditable from the outside. If the contract is just a transfer rail, the system reduces to "trust the backend," and there is no point in being on-chain at all.
-
-This principle is the project's load-bearing constraint. Every design decision below should be evaluated against it. If a decision pushes logic off-chain, it requires strong justification.
+- **Mainnet deployment.** Testnet (Base Sepolia) for now. Mainnet and multi-chain support are revisited once the system is mature.
+- **Automatic fiat onramp.** Getting USDC into a user's account is manual (a testnet faucet) — see [The USDC funding problem](#the-usdc-funding-problem).
+- **Multi-party groups and debt-graph simplification.** Two wallets only. Graph netting belongs to a later milestone.
+- **Custom split ratios.** All splits are 50/50.
+- **Currency flexibility.** USDC only — no fiat denomination, oracle, or rate conversion.
+- **Forced wallet backup.** Key export is available but not forced — see [Trust model](#trust-model-and-security-considerations).
+- **Contract changes in the current milestone.** The application layer adds no on-chain code and modifies no deployed contract.
 
 ## Design decisions
 
-### 1. Non-custodial router pattern
+The decisions fall into two groups: the settlement contract (the primitive) and the application layer (what makes it usable).
 
-**The contract never holds funds.** USDC moves directly from the debtor's wallet to the creditor's wallet at the moment of `settle()`. There is no contract balance, no deposit step, and no withdrawal step.
+### The settlement contract
 
-This works via ERC-20 `approve` / `safeTransferFrom`. Each member approves the contract for a chosen allowance, and `settle()` routes funds directly from debtor to creditor.
+1. **Contract-first.** The contract is the source of truth; any off-chain layer is plumbing on top of a contract that works standalone. This is a deliberate inversion of the common pattern where a backend holds the logic and a thin contract handles transfers. If logic moved off-chain, the system would reduce to "trust the backend," and there would be no point being on-chain. Every decision below is evaluated against this principle.
 
-Why this matters:
+2. **Non-custodial router.** The contract never holds funds. USDC moves directly from debtor to creditor at the moment of `settle()`, via ERC-20 `approve` / `safeTransferFrom` — no deposit step, no withdrawal step. This eliminates the entire class of "the contract has a bug that locks or steals funds," and bounds the trust assumption to a pre-approved allowance. The alternative is a custodial model where members deposit and the contract holds funds; it offers a stronger settlement guarantee but turns the contract into a custody target with a much larger attack surface — not a trade worth making for two people who already trust each other. A custodial or hybrid model can be revisited if adversarial or multi-party groups make enforcement matter. Non-custodial here means the contract never initiates custody in its normal flow — not that it must trap funds sent to it by mistake: `rescueETH` and `rescueERC20`, gated by member-only access with no admin role, recover such funds consistently with this trust model.
 
-- **No custody risk.** A contract that does not hold funds cannot be drained. The entire class of "the contract has a bug that locks or steals user funds" is eliminated by construction. The audit surface is dramatically smaller.
-- **Bounded trust assumption.** The only thing a user trusts is the pre-approved allowance. If a counterparty's key is compromised, the maximum loss is the allowance amount, not the user's entire wallet. Allowance amounts can be set to match expected usage.
-- **Better UX.** Without this pattern, settlement would require two transactions (deposit, then settle), and the debtor would have to be online for both. With it, settlement is a single transaction.
+3. **Debtor-triggered settlement.** Either party could technically pull funds via the allowance, but `settle()` is restricted to the debtor. Settlement is something a user *does*, not something done *to* them; letting the creditor unilaterally withdraw, even with technical approval, would surprise users and erode trust. This is reversible later; the conservative semantics are the default.
 
-**Trade-off acknowledged:** the non-custodial pattern is safer but weaker. Settlement is not guaranteed; the debtor may have an insufficient USDC balance at settlement or revoke the allowance entirely. The contract tracks what is owed but has no ability to enforce payment. A custodial model (see "Custodial settlement" in Alternatives considered) would offer a stronger settlement guarantee: once funds are deposited, they are committed. M1 accepts the weaker guarantee because the M1 trust model is between two people who already trust each other; the social relationship is the real enforcement mechanism, not the contract. If settlement guarantees become important (e.g., for adversarial or multi-party groups in M3), the custodial model can be revisited.
+4. **Per-group contract (factory pattern).** Each group is its own `MendGroup` at its own address, with both members baked in as `immutable` constructor arguments. A `MendFactory` deploys them. This is simpler than a single registry with `groupId` parameters — no nested mappings, no per-call group-membership checks, two-line access control — and it scales naturally to multi-party templates later. Multiple groups between the same pair are allowed; that is a feature, not an oversight.
 
-**Note on rescue functions.** "Non-custodial" means the contract cannot pull funds from a user's wallet without a pre-approved allowance and never initiates custody as part of its normal flow. It does *not* mean the contract must permanently trap funds that were mistakenly sent to it via an external `transfer` or `selfdestruct`. The spec therefore includes `rescueETH` and `rescueERC20` (see `specs.md` §8.6), gated by the existing `onlyMember` access control — no admin role, no privileged caller, consistent with the contract's existing trust model.
+5. **USDC-native accounting.** All amounts are in USDC base units (6 decimals). No oracle, no fiat denomination, no rate conversion. Denominating in the settlement asset itself keeps the contract radically simpler and avoids a class of oracle-dependent edge cases.
 
-### 2. Debtor-triggered settlement
+6. **Soft delete.** Deleted expenses are flagged, not removed. "This expense was deleted at block X by member Y" is a more honest record than "this expense never existed," and the audit trail is part of the value of being on-chain.
 
-Even though the pre-approval pattern technically permits _either_ party to call `settle()` and pull funds (the creditor could pull from the debtor's allowance just as easily as the debtor can push), M1 restricts `settle()` to the debtor only.
+7. **Signed-integer balance.** A single `int256` holds memberA's net position relative to memberB (positive: B owes A; negative: A owes B; zero: settled). One value to reason about, symmetric math, and no risk of two separate fields drifting out of sync.
 
-The technical defense to either-party-settle is that the debtor _consented_ by approving. This is how every DeFi protocol works: Uniswap, Aave, and Compound. From a strict consent standpoint, it is defensible.
+8. **Optimistic trust.** Either member can post any expense, and it hits the balance immediately. There is no two-sided confirmation, dispute window, or challenge mechanism — appropriate for a two-party group whose members already trust each other.
 
-The cultural mental model of shared expenses is different: "I'll pay you back when we settle up". Settlement is something a user _does_, not something that happens _to_ them. Allowing the creditor to unilaterally withdraw funds from the debtor's wallet, even with technical approval, would surprise users and erode trust.
+### The application layer
 
-Trade-off accepted: M1 has slightly worse UX (the debtor must actively settle) in exchange for honoring user expectations around consent. The approval pattern still earns its keep: settlement is a single transaction rather than two, but the _trigger_ belongs to the debtor.
+9. **Account abstraction over EOAs.** The application replaces the externally-owned-account assumption — a private key the user guards, a gas token they must hold — with an ERC-4337 smart account, whose authorization logic can accept an email login and whose gas a third party can sponsor. The contract is account-abstraction-agnostic by construction (`onlyMember` and the debtor check are plain address comparisons), so a smart account registered as a member works with no contract change. The application layer is purely additive on top of the deployed contract.
 
-This decision is reversible. Adding "either party can settle" in M2 is a one-line change. Removing it after users have built trust assumptions around debtor-only is much harder. The conservative semantics are the default.
+10. **Privy for authentication and embedded wallet.** Privy handles login (email, social, or passkey) and provisions an embedded smart account behind it. It supports the target chain with gas sponsorship, and it supports key export, which is what preserves the no-platform-dependency property (see Trust model).
 
-### 3. Per-group contract (factory pattern)
+11. **Pimlico for bundler and paymaster.** Pimlico packages user operations into transactions (bundler) and sponsors their gas (paymaster), making tracking operations and the one-time approval free to the user. It is the bundler Privy routes to by default. The application uses a project-owned key with restrictions, not the public rate-limited endpoint. Pimlico's bundler is confirmed on Base Sepolia; paymaster coverage there is to be confirmed against a live endpoint during the build.
 
-M1 deploys a `MendFactory` contract whose only job is to deploy `MendGroup` contracts. Each group gets its own `MendGroup` instance, at its own address, with the two members baked in as `immutable` constructor arguments. Multiple groups between the same pair of wallets are allowed — the factory performs no uniqueness check. Users may create several groups with the same counterparty for different purposes (e.g., "shared apartment" vs "trips"); that is a feature, not an oversight.
+12. **Kernel (ZeroDev) smart account.** A smart account is a contract, and the implementation comes from an audited, reusable codebase. Kernel is the most widely adopted single-owner account on L2s, is modular under ERC-7579 (leaving room to add passkeys later), and is confirmed working on the EntryPoint version Privy uses with Pimlico. It is swappable from the Privy dashboard, so the choice carries low lock-in.
 
-The alternative is a single registry contract with a `mapping(uint256 => Group)` and a `groupId` parameter on every function call. That pattern is more gas-efficient at the margin (no contract deployment per group) but introduces nested mapping lookups, requires access control checks on every call (`is msg.sender a member of group N?`), and creates a class of bugs where operations on the wrong group ID are possible.
+13. **Vite + React single-page app.** Mend has no server-side state — the contract is the source of truth, and reads come from the chain and its event logs — so a client-only application matches the architecture directly and keeps a single mental model. It builds to a static bundle. A server framework would add a layer the application does not need yet.
 
-The per-group contract pattern wins for M1 because:
+14. **wagmi + viem for contract interaction.** The standard typed React hooks over a typed Ethereum library; there is no meaningfully different alternative. Reads come from the chain and from `ExpenseAdded` / `ExpenseEdited` / `ExpenseDeleted` events, since the contract exposes no bulk-read helpers by design.
 
-- **The contract surface is dramatically simpler.** Every function implicitly operates on "this group." There is no group ID to pass, no mapping lookup, no nested data structures.
-- **Access control is two lines.** `require(msg.sender == memberA || msg.sender == memberB)`. That is the entire access control story.
-- **The mental model matches the code.** "Our group" is its own Ethereum address. It can be looked up on Etherscan as a standalone object. USDC can be sent to it directly (though the contract does not custody it).
-- **It scales naturally to multi-party groups in M3.** A factory is a contract that deploys other contracts. When M3 arrives, the same factory can deploy a different `MendGroupN` template for groups of three or more, alongside the existing two-party template.
+## Architecture
 
-The gas cost of per-group deployment is low on L2s (where Mend is expected to run). On L1 it would matter, and there is a well-known optimization (EIP-1167 minimal proxies) that makes factory deployments roughly 10× cheaper. That is a future concern, not an M1 one.
+A write operation — adding an expense, for example — flows like this:
 
-### 4. USDC-native unit of account
+```
+User action in the SPA
+  → Privy (authenticated session provides the Kernel smart account as signer)
+  → a UserOperation is built describing the intended call
+  → Pimlico paymaster sponsors the gas; Pimlico bundler submits it
+  → EntryPoint on the target chain
+  → the user's Kernel smart account validates and executes the operation
+  → MendGroup.addExpense(...)
+        msg.sender == the smart account == memberA or memberB
+```
 
-All accounting is in USDC base units (6 decimals). There is no fiat denomination, no oracle, and no exchange-rate conversion at settlement time. An expense of "50 USDC for groceries" is stored as 50,000,000 micro-USDC and settled as exactly that amount.
+The smart account is deployed counterfactually: its first user operation also deploys the account contract, and the paymaster sponsors that gas too. Nothing on-chain costs the user anything until settlement.
 
-The alternative is to denominate balances in USD (cents) and convert to USDC at settlement using a Chainlink price feed or similar. That is closer to user expectations, people think in dollars, not in stablecoin tokens, but it adds:
+**Reads** bypass this machinery — the app reads `balance` and expense data directly from the contract via viem, and reconstructs the expense list from event logs.
 
-- An oracle dependency (price feed availability, staleness handling, fallback logic)
-- A class of edge cases around what happens if the rate changes between expense logging and settlement
-- A fundamentally different security profile (oracle manipulation becomes a concern)
+**Settlement** is the one operation where gas sponsorship is not the whole story — see below.
 
-For M1, the right move is to denominate in the settlement asset itself. USDC trades at approximately $1; the difference is invisible to users at this scale, and the contract stays radically simpler. Fiat denomination is revisited in M2 alongside the frontend that would actually display dollar amounts to users.
+## Trust model and security considerations
 
-### 5. Soft delete for expenses
+The contract's trust boundary is small: a member trusts the `MendGroup` contract's correctness and their own wallet. The application layer adds Privy, Pimlico, and the Kernel implementation to that boundary. Two public promises must continue to hold — **non-custodial** (no third party can move a member's funds) and **no platform dependency** (the ledger and the ability to settle survive the app that created them). This section states how each new dependency affects them.
 
-Deleted expenses are flagged with a `deleted` boolean rather than removed from storage. The contract recomputes the balance to reverse the deleted expense's contribution, but the expense itself remains in the contract's history.
+**Privy — key custody.** Privy's embedded wallet is non-custodial by its documented architecture: the signing key is split via 2-of-2 Shamir Secret Sharing across an enclave share (inside a trusted execution environment) and an auth share (encrypted, released only on valid user authentication), and both are required to sign. Privy cannot move funds unilaterally. The assurance rests on trusting Privy's enclave attestation, but it is backstopped by key export, below. **Non-custodial: preserved.**
 
-Why: the audit trail is part of the value proposition of putting this on-chain. "This expense was deleted at block X by member Y" is a more honest record than "this expense never existed." Hard delete would compromise the auditability that the on-chain approach is supposed to provide.
+**Privy — platform dependency.** This is the sharper tension, because the no-platform-dependency promise is public. Privy preserves it only via key export: a user can export the raw private key to any external wallet, after which the wallet — and the Kernel account it signs for — is fully independent of Privy. Every documented recovery path that does not involve export still depends on the Privy-held auth share, so an un-exported wallet is not established to survive Privy disappearing. The application therefore commits to two things: key export stays enabled (never disabled or locked behind an app-server quorum), and export is surfaced as available but not forced — a mandatory backup step would reintroduce the seed-phrase friction the application exists to remove. On testnet, with no real funds, the residual risk is acceptable; a stronger backup nudge is a mainnet-hardening concern. **No platform dependency: preserved conditionally** — guaranteed once a user exports their key, opt-in until they do.
 
-### 6. Signed-integer balance representation
+**Pimlico — liveness, not custody.** The bundler and paymaster are a liveness dependency. If Pimlico is unavailable, a user cannot submit sponsored operations through it, but no funds are at risk, and the dependency is substitutable: the Kernel account is a standard ERC-4337 account that any bundler can serve, and a user with their exported key plus ETH could submit operations with no sponsorship service at all.
 
-Each `MendGroup` stores a single `int256 balance` representing memberA's net position relative to memberB. Positive means memberB owes memberA. Negative means memberA owes memberB. Zero means settled.
+**Kernel — third-party contract code.** The smart account is third-party code that now sits between the user and `MendGroup`. The application relies on Kernel being a widely adopted, audited implementation rather than re-auditing it. Control of the account follows the exportable signer key, not Privy-specific infrastructure.
 
-The alternative is two separate fields (`amountAOwes`, `amountBOwes`) that get netted at settlement time. The signed-integer approach is preferred because:
+In sum, the on-chain trust model is unchanged — the contract still holds no funds and enforces the same access control. The off-chain additions introduce liveness and third-party-code considerations but grant no party any new ability to move a user's funds.
 
-- **The math is symmetric.** Adding to the balance is the same operation regardless of who paid; only the sign differs. This eliminates a class of bugs where two fields drift out of sync.
-- **Fewer invariants.** One storage slot, one value to reason about. The debtor and amount are both derived from the single balance.
+## The USDC funding problem
 
-### 7. Optimistic trust model
+Gas sponsorship covers gas, not the money being moved. `settle()` calls `safeTransferFrom`, which needs two things the paymaster cannot provide:
 
-Either member can post any expense, and it is immediately reflected in the balance. There is no two-sided confirmation, no dispute window, no challenge mechanism. If memberA posts a fake expense claiming memberB owes them money, the balance updates immediately and memberB has to manually delete it (or live with it). See "Two-sided confirmation" in Alternatives considered for why this was rejected.
+1. **A one-time USDC approval** from the user's smart account to the `MendGroup` contract. This is itself a sponsored, gasless operation, but it must happen before the first settlement. It is surfaced to the user as their **"budget"** — the maximum Mend can move on their behalf — avoiding ERC-20 jargon in user-facing copy.
+2. **An actual USDC balance** in the user's account. This is the hard part: a non-crypto user has no USDC, and no amount of gas sponsorship creates it.
 
-## Alternatives considered and rejected
+On testnet, USDC comes from Circle's Base Sepolia faucet, sent to the smart account address — a manual step outside the app, and acceptable friction for a testnet validation between a known pair of users. The interface must check the current allowance before offering the Settle action, so a user never submits a settlement that reverts, and should warn when the budget is low.
 
-### Custodial settlement
+For real use on mainnet, the funding problem is solved by a fiat onramp; choosing Base positions Mend for Coinbase's onramp, which delivers USDC directly into a Base address. That integration is out of scope here and named only to record why funding is left manual rather than considered solved.
 
-**Approach:** Members deposit USDC into the contract. The contract holds funds and draws from the internal balance at settlement time. Settlement is guaranteed because the funds are already committed.
+## Deployment scope
 
-**Advantages:** Stronger settlement guarantee — once deposited, the debtor cannot revoke or move the funds. No allowance management. Enables auto-settlement or periodic settlement since funds are already available. Simpler mental model for non-technical users: "put money in, contract handles the rest."
-
-**Why rejected:** The contract becomes a custody target. Every dollar deposited is a dollar at risk if there is a bug — deposit, withdrawal, partial withdrawal, reentrancy on withdraw, and what-happens-if-someone-withdraws-mid-dispute all become part of the attack surface. The audit surface grows significantly. Funds are locked with an opportunity cost, and the flow requires at minimum two transactions (deposit, then settle), possibly three (deposit, settle, withdraw excess). For M1's trust model (two people who already trust each other), the social relationship is the enforcement mechanism, and the stronger settlement guarantee does not justify the larger attack surface. If M3 introduces adversarial or multi-party groups where enforcement matters more, a custodial or hybrid model may be worth revisiting.
-
-### Auto-settle on every expense
-
-**Approach:** Eliminate the `int256 balance` and the `settle()` function entirely. Every `addExpense` call also moves money: as soon as memberA posts a 50 USDC expense, the contract immediately pulls 25 USDC from memberB's wallet to memberA's. The "balance" becomes the implicit sum of historical transfers.
-
-**Why rejected:** Incompatible with edit and delete. If money has already moved at the time an expense is logged, reversing it requires compensating transfers, which fragments the audit trail and complicates reasoning about the current balance.
+Mend targets **Base Sepolia**. The contract was first deployed and validated on Optimism Sepolia — a choice I made for familiarity rather than a product reason — and the application milestone migrates the target to Base Sepolia, where consumer activity and the fiat-onramp path are stronger and which is built on the same OP Stack. At this stage the migration is cheap: redeploy the factory, repoint the fork test's USDC address, update the docs. A fresh `MendFactory` will be redeployed against Circle's native Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`) and its address recorded in [`README.md`](../README.md) once it lands; until then, the deployed contract remains the Optimism Sepolia instance referenced in README. Mainnet, other chains, and multi-chain support remain out of scope.
 
 ## Roadmap
 
-These milestones are directional, not committed. M1 is the current focus; subsequent milestones may change, be reordered, or be dropped entirely.
+Directional, not committed. Milestones may change, be reordered, or be dropped.
 
-| Milestone | Theme                                                            | Status      |
-| --------- | ---------------------------------------------------------------- | ----------- |
-| M1        | Two-party non-custodial IOU contract                             | In design   |
-| M2        | Onboarding — embedded smart-account auth, gasless UX             | Exploratory |
-| M3        | Multi-party groups and debt graph simplification                 | Exploratory |
-| M4        | Off-chain integration — bank-feed ingestion, auto-classification | Speculative |
+| Milestone | Theme                                                            | Status                      |
+| --------- | ---------------------------------------------------------------- | --------------------------- |
+| M1        | Two-party non-custodial IOU contract                             | Deployed (Optimism Sepolia) |
+| M2        | Onboarding — embedded smart-account auth, gasless UX, on Base Sepolia | In progress            |
+| M3        | Multi-party groups and debt-graph simplification                 | Exploratory                 |
+| M4        | Off-chain integration — bank-feed ingestion, auto-classification | Speculative                 |
 
-M2 and M3 are deliberately ordered with **onboarding before multi-party**. The current ordering reflects that multi-party math is technically interesting, but does not change _who can use the product_, while onboarding does. M2 is where the product thesis lives. M1 is the foundation M2 needs to exist. M3 is interesting but optional. M4 is conditional on the rest of the project succeeding.
+Onboarding (M2) comes before multi-party (M3) deliberately: multi-party math is interesting but does not change *who can use the product*, while onboarding does. M2 is where the product becomes usable at all; M3 and M4 are where the differentiators that justify the on-chain model — cross-border settlement, programmable multi-party netting — are maximized.
 
 ## References
 
-- [specs.md](specs.md) — Function-by-function contract specification
-- [README.md](../README.md) — Project front door
+- [`specs.md`](specs.md) — contract specification
+- [`README.md`](../README.md) — project front door
+- [Privy](https://docs.privy.io) · [Pimlico](https://docs.pimlico.io) · [ZeroDev / Kernel](https://docs.zerodev.app) · [wagmi](https://wagmi.sh) · [viem](https://viem.sh)
