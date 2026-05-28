@@ -18,19 +18,11 @@
 
 Mend is a non-custodial primitive for shared expenses. Members deploy a group, record expenses against it, and settle the running balance in USDC directly between their wallets — atomically, on-chain, with no third party in the middle.
 
-**Status:** M1 deployed to Optimism Sepolia. `MendFactory` at [`0x7c6c933b036fce0d6663ab4f3866acdc2a5091da`](https://testnet-explorer.optimism.io/address/0x7c6c933b036fce0d6663ab4f3866acdc2a5091da). See [`docs/specs.md`](docs/specs.md) for the full specification and [`docs/design.md`](docs/design.md) for design rationale.
+Existing trackers like Splitwise get the tracking right, but settlement lives in a separate system: a debt is marked "settled" because someone tapped a button, not because money provably moved. Mend keeps balances and settlement in the same place, so the payment is the proof.
+
+**Status:** M1 (the contract) is deployed to Optimism Sepolia — `MendFactory` at [`0x7c6c…091da`](https://testnet-explorer.optimism.io/address/0x7c6c933b036fce0d6663ab4f3866acdc2a5091da). M2 (onboarding) is in design; see the [roadmap](#roadmap).
 
 ---
-
-## Why Mend exists
-
-Splitting expenses with people you trust shouldn't be hard. But it is. Existing tools, like Splitwise, get the tracking part right. The moment of settlement is where they fall short. The ledger lives in one app and the money lives in another, with nothing connecting them. What fills the gap is friction: being methodical about logging every expense, depending on others to do the same, and chasing settlements that may or may not happen. At the end, "I sent you the Venmo" is the only proof that exists, and it depends entirely on trust.
-
-Mend closes that gap. Balances and settlement live in the same place, on-chain, and "did you actually pay" stops being a question of trust. The technology is incidental. If a different stack could deliver less friction tomorrow, that would be the right tool. Today, smart contracts on a low-cost L2 are what make this possible: cheap enough to use casually, secure enough to handle real money, and finally mature enough that the ecosystem is no longer hostile to non-technical users.
-
-Mend is built with the conviction that digital products that touch money, and digital products in general, deserve to be made with care. Care in the engineering: formal specs, invariant-tested contracts, a design that earns trust by construction rather than asking for it. Care in the product: language designed for humans rather than the crypto subculture, flows that hide complexity instead of celebrating it, visual quality that signals seriousness. This is a problem worth solving well.
-
-The goal is for Mend to be used. Not as a proof of concept, not as a portfolio piece, but as a real tool that real people use to settle expenses with the people in their life. M1 is the foundation: a minimal, audited primitive deployed to Optimism Sepolia. The first step toward a product that hides its plumbing and focuses on the experience of getting things settled. Whether Mend grows beyond that is to be discovered, but the foundation is being built as if it will.
 
 ## How it works
 
@@ -40,24 +32,41 @@ The goal is for Mend to be used. Not as a proof of concept, not as a portfolio p
 4. Expenses can be edited or deleted. The contract recomputes the balance accordingly. A full audit trail is preserved on-chain.
 5. When the debtor wants to settle up, they call `settle()`. The contract pulls the owed amount from the debtor's wallet to the creditor's wallet in a single transaction, and resets the balance to zero.
 
----
+## Getting started
+
+Mend is built with [Foundry](https://getfoundry.sh).
+
+```bash
+git clone https://github.com/aliersh/mend.git
+cd mend
+forge install   # fetches the forge-std and openzeppelin-contracts submodules
+forge build
+forge test
+```
+
+Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. The fork tests run against Optimism Sepolia and read the `OP_SEPOLIA_RPC_URL` environment variable — set it in a `.env` file (Foundry loads it automatically) to run them.
+
+## Documentation
+
+- [`docs/design.md`](docs/design.md) — design rationale (the *why*)
+- [`docs/specs.md`](docs/specs.md) — contract specification (the *what*)
+
+## Security
+
+Mend is deployed to testnet (Optimism Sepolia) only and has not been audited. **Do not use it with real funds.** The contract is non-custodial by design — it never holds funds, and settlement moves USDC directly between members' wallets — but that property has not been independently reviewed.
 
 ## Roadmap
 
-Directional, not committed. M1 is the current focus; everything beyond it is exploratory and may change, be reordered, or dropped entirely.
+Directional, not committed. Everything beyond M1 is exploratory and may change, be reordered, or be dropped.
 
+| Milestone | Theme                                                            | Status                      |
+| --------- | ---------------------------------------------------------------- | --------------------------- |
+| **M1**    | Two-party non-custodial IOU contract                             | Deployed (Optimism Sepolia) |
+| **M2**    | Onboarding — embedded smart-account auth, gasless UX, on Base Sepolia | In progress            |
+| **M3**    | Multi-party groups and debt-graph simplification                 | Exploratory                 |
+| **M4**    | Off-chain integration — bank-feed ingestion, auto-classification | Speculative                 |
 
-| Milestone | Theme                                                            | Status      |
-| --------- | ---------------------------------------------------------------- | ----------- |
-| **M1**    | Two-party non-custodial IOU contract                             | Deployed to Optimism Sepolia            |
-| **M2**    | Onboarding — embedded smart-account auth, gasless UX             | Exploratory |
-| **M3**    | Multi-party groups and debt graph simplification                 | Exploratory |
-| **M4**    | Off-chain integration — bank-feed ingestion, auto-classification | Speculative |
-
-
-See [docs/design.md](docs/design.md) for the reasoning behind the milestone ordering.
-
----
+See [`docs/design.md`](docs/design.md) for the reasoning behind the milestone ordering.
 
 ## About
 
