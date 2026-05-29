@@ -6,16 +6,16 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {MendGroup} from "../src/MendGroup.sol";
 
-/// @notice Fork tests against real USDC on Optimism Sepolia. Skips when
-///         `OP_SEPOLIA_RPC_URL` is unset.
+/// @notice Fork tests against real USDC on Base Sepolia. Skips when
+///         `BASE_SEPOLIA_RPC_URL` is unset.
 contract MendGroupForkTest is Test {
-    /// USDC on Optimism Sepolia (Circle official). Source: .env.
-    address internal constant USDC = 0x5fd84259d66Cd46123540766Be93DFE6D43130D7;
+    /// USDC on Base Sepolia (Circle native). Source: .env.
+    address internal constant USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
-    /// Pinned block for determinism. Chosen ~329 blocks behind HEAD at
+    /// Pinned block for determinism. Chosen ~949 blocks behind HEAD at
     /// authoring time (well past the L2 reorg window). Re-pin if the USDC
     /// implementation is ever upgraded.
-    uint256 internal constant FORK_BLOCK = 42_329_000;
+    uint256 internal constant FORK_BLOCK = 42_149_000;
 
     MendGroup internal group;
     address internal memberA;
@@ -23,7 +23,7 @@ contract MendGroupForkTest is Test {
 
     function setUp() public {
         // `vm.rpcUrl` would error on unset env — read via `envOr` so we can skip gracefully.
-        string memory url = vm.envOr("OP_SEPOLIA_RPC_URL", string(""));
+        string memory url = vm.envOr("BASE_SEPOLIA_RPC_URL", string(""));
         if (bytes(url).length == 0) {
             vm.skip(true);
             return;

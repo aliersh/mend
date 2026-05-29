@@ -5,8 +5,8 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/aliersh/mend/test.yml?branch=main&label=CI)](https://github.com/aliersh/mend/actions/workflows/test.yml)
 [![Solidity](https://img.shields.io/badge/solidity-0.8.34-363636)](foundry.toml)
 [![Built with Foundry](https://img.shields.io/badge/built%20with-Foundry-black)](https://getfoundry.sh)
-[![Network](https://img.shields.io/badge/network-Optimism%20Sepolia-FF0420)](https://sepolia-optimism.etherscan.io)
-[![MendFactory](https://img.shields.io/badge/MendFactory-0x7c6c…091da-FF0420)](https://testnet-explorer.optimism.io/address/0x7c6c933b036fce0d6663ab4f3866acdc2a5091da)
+[![Network](https://img.shields.io/badge/network-Base%20Sepolia-0052FF)](https://sepolia.basescan.org)
+[![MendFactory](https://img.shields.io/badge/MendFactory-0x7C6c…091Da-0052FF)](https://sepolia.basescan.org/address/0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 <!--
@@ -20,7 +20,7 @@ Mend is a non-custodial primitive for shared expenses. Members deploy a group, r
 
 Existing trackers like Splitwise get the tracking right, but settlement lives in a separate system: a debt is marked "settled" because someone tapped a button, not because money provably moved. Mend keeps balances and settlement in the same place, so the payment is the proof.
 
-**Status:** M1 (the contract) is deployed to Optimism Sepolia — `MendFactory` at [`0x7c6c…091da`](https://testnet-explorer.optimism.io/address/0x7c6c933b036fce0d6663ab4f3866acdc2a5091da). M2 (onboarding) is in design; see the [roadmap](#roadmap).
+**Status:** M1 (the contract) is deployed to Base Sepolia — `MendFactory` at [`0x7C6c…091Da`](https://sepolia.basescan.org/address/0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da). M2 (onboarding) is in design; see the [roadmap](#roadmap).
 
 ---
 
@@ -44,7 +44,7 @@ forge build
 forge test
 ```
 
-Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. The fork tests run against Optimism Sepolia and read the `OP_SEPOLIA_RPC_URL` environment variable — set it in a `.env` file (Foundry loads it automatically) to run them.
+Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. The fork tests run against Base Sepolia and read the `BASE_SEPOLIA_RPC_URL` environment variable — set it in a `.env` file (Foundry loads it automatically) to run them.
 
 ## Documentation
 
@@ -53,7 +53,7 @@ Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. 
 
 ## Security
 
-Mend is deployed to testnet (Optimism Sepolia) only and has not been audited. **Do not use it with real funds.** The contract is non-custodial by design — it never holds funds, and settlement moves USDC directly between members' wallets — but that property has not been independently reviewed.
+Mend is deployed to testnet (Base Sepolia) only and has not been audited. **Do not use it with real funds.** The contract is non-custodial by design — it never holds funds, and settlement moves USDC directly between members' wallets — but that property has not been independently reviewed.
 
 ## Roadmap
 
@@ -61,7 +61,7 @@ Directional, not committed. Everything beyond M1 is exploratory and may change, 
 
 | Milestone | Theme                                                            | Status                      |
 | --------- | ---------------------------------------------------------------- | --------------------------- |
-| **M1**    | Two-party non-custodial IOU contract                             | Deployed (Optimism Sepolia) |
+| **M1**    | Two-party non-custodial IOU contract                             | Deployed (Base Sepolia)     |
 | **M2**    | Onboarding — embedded smart-account auth, gasless UX, on Base Sepolia | In progress            |
 | **M3**    | Multi-party groups and debt-graph simplification                 | Exploratory                 |
 | **M4**    | Off-chain integration — bank-feed ingestion, auto-classification | Speculative                 |

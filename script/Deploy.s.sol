@@ -7,13 +7,20 @@ import {MendFactory} from "../src/MendFactory.sol";
 
 contract Deploy is Script {
     function run() external {
-        address usdc = vm.envAddress("USDC_ADDRESS");
+        address usdc;
+        if (block.chainid == 84532) {
+            // Circle native USDC on Base Sepolia (https://developers.circle.com/stablecoins/usdc-on-test-networks)
+            usdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+        } else {
+            usdc = vm.envAddress("USDC_ADDRESS");
+        }
 
         vm.startBroadcast();
         MendFactory factory = new MendFactory(usdc);
         vm.stopBroadcast();
 
-        console.log("MendFactory deployed at:", address(factory));
-        console.log("USDC address:", usdc);
+        console.log("Chain ID:       ", block.chainid);
+        console.log("MendFactory at: ", address(factory));
+        console.log("USDC address:   ", usdc);
     }
 }

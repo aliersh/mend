@@ -55,7 +55,7 @@ The contracts assume the following are true. If any of these is violated, the co
 - **aMG-001:** The USDC contract at the address provided to the factory implements ERC-20 correctly, including `transferFrom` semantics. Mend does not validate USDC's behavior.
 - **aMG-002:** The MendFactory validates its inputs before calling `new MendGroup(...)`. The MendGroup constructor performs equivalent checks as defense in depth, but the factory is the expected deployer.
 - **aMG-003:** Members retain control of their wallets across the lifetime of the group. Lost-key recovery, wallet migration, and similar concerns are out of scope.
-- **aMG-004:** The deployment chain (Optimism Sepolia for M1) is operational and finalizing blocks normally. Reorg behavior beyond standard L2 finality is out of scope.
+- **aMG-004:** The deployment chain (Base Sepolia) is operational and finalizing blocks normally. Reorg behavior beyond standard L2 finality is out of scope.
 
 ### 3.2 Invariants
 
@@ -587,7 +587,7 @@ error InvalidMemberAddress();
 - **Unit tests:** one per function, covering the happy path plus every revert condition listed in this spec.
 - **Fuzz tests:** property-based tests on the balance math. For any random sequence of `addExpense`, `editExpense`, and `deleteExpense` operations, the contract's `balance` must equal the sum of contributions from all non-deleted expenses, recomputed from scratch. This implicitly covers the property that an edit is equivalent to having created the expense with the new values originally.
 - **Invariant tests:** Foundry invariant suite running random sequences of calls from random actors, asserting the balance-equals-sum-of-non-deleted-contributions property holds after every state-changing call.
-- **Fork tests:** a subset of tests runs against a forked Optimism Sepolia with real USDC, verifying that `safeTransferFrom` interactions work end-to-end.
+- **Fork tests:** a subset of tests runs against a forked Base Sepolia with real USDC, verifying that `safeTransferFrom` interactions work end-to-end.
 - **Reentrancy tests:** an explicit test that attempts to re-enter `settle()` via a malicious token or receiver and verifies the contract correctly rejects the re-entry.
 
 ### 15.3 NatSpec requirements
@@ -604,7 +604,7 @@ No other dependencies. Resist the temptation to pull in additional libraries; M1
 
 ### 15.5 Deployment
 
-- `script/Deploy.s.sol`: deploys `MendFactory` to Optimism Sepolia using the canonical USDC address for that chain (looked up at deploy time, not hardcoded as a constant). Verifies the factory on Blockscout. The deployed factory address is recorded in `README.md`.
+- `script/Deploy.s.sol`: deploys `MendFactory` to Base Sepolia using the canonical USDC address hardcoded per chain ID (`84532` → `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; other chains fall back to `USDC_ADDRESS` env var). Verifies the factory on Basescan. The deployed factory address is recorded in `README.md`.
 - `script/DemoFlow.s.sol`: end-to-end demonstration script. Deploys the factory, creates a group, performs USDC approvals, adds expenses, edits one, deletes one, and settles. Used as the canonical executable proof that the system works.
 
 ---

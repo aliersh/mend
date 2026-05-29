@@ -132,7 +132,7 @@ For real use on mainnet, the funding problem is solved by a fiat onramp; choosin
 
 ## Deployment scope
 
-Mend targets **Base Sepolia**. The contract was first deployed and validated on Optimism Sepolia — a choice I made for familiarity rather than a product reason — and the application milestone migrates the target to Base Sepolia, where consumer activity and the fiat-onramp path are stronger and which is built on the same OP Stack. At this stage the migration is cheap: redeploy the factory, repoint the fork test's USDC address, update the docs. A fresh `MendFactory` will be redeployed against Circle's native Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`) and its address recorded in [`README.md`](../README.md) once it lands; until then, the deployed contract remains the Optimism Sepolia instance referenced in README. Mainnet, other chains, and multi-chain support remain out of scope.
+Mend targets **Base Sepolia**. A `MendFactory` is deployed there against Circle's native Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`); its address is [`0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da`](https://sepolia.basescan.org/address/0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da), recorded in [`README.md`](../README.md). The contract was first deployed on Optimism Sepolia during M1 and moved to Base Sepolia for M2. Mainnet, other chains, and multi-chain support remain out of scope.
 
 ## Roadmap
 
@@ -140,7 +140,7 @@ Directional, not committed. Milestones may change, be reordered, or be dropped.
 
 | Milestone | Theme                                                            | Status                      |
 | --------- | ---------------------------------------------------------------- | --------------------------- |
-| M1        | Two-party non-custodial IOU contract                             | Deployed (Optimism Sepolia) |
+| M1        | Two-party non-custodial IOU contract                             | Deployed (Base Sepolia)     |
 | M2        | Onboarding — embedded smart-account auth, gasless UX, on Base Sepolia | In progress            |
 | M3        | Multi-party groups and debt-graph simplification                 | Exploratory                 |
 | M4        | Off-chain integration — bank-feed ingestion, auto-classification | Speculative                 |
