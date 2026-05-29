@@ -11,30 +11,6 @@ the milestone that will implement it.
 
 ## M2 (Onboarding)
 
-### UX vocabulary
-
-Surface ERC-20 allowance to users as **"budget"** — e.g., "Your Mend budget:
-$1,000". Tooltip: "This is the maximum amount Mend can pull from your wallet
-when you settle. You can increase it anytime."
-
-Avoid the words "approval", "allowance", "transferFrom", "spender", or any
-ERC-20 jargon in user-facing copy. Internal code and tests still use the
-technical terms (they come from the standard and cannot be renamed).
-
-### Allowance UX requirements
-
-The frontend MUST check the current allowance (via USDC's `allowance()` view
-function) before offering the Settle button. Failure modes to handle:
-
-- Allowance insufficient for the current balance → show a banner
-  "Re-approve USDC before settling" with a button that triggers the approval
-  flow first.
-- Allowance below 20% of the original approved amount → soft warning
-  "Your budget is running low."
-
-Do NOT let the user click Settle and watch the transaction revert. Gas is
-wasted even on reverting transactions.
-
 ### Group organization / naming
 
 Users may create multiple groups with the same counterparty for different purposes (e.g., "needs" vs "wants", "shared apartment" vs "trips"). The contract does not store group names or categories — this is UX concern.
@@ -63,6 +39,8 @@ Recommendation default: stick with immutability per contract, deploy new contrac
 
 ### Revisit deployment target
 
-M1 is Optimism Sepolia only. When the contract is mature and validated,
-evaluate deployment to Optimism mainnet. Other L2s and cross-chain support
-are speculative and depend on demand and use cases that emerge.
+The contract is on Base Sepolia (migrated from Optimism Sepolia for M2). When
+the system is mature and validated, evaluate deployment to Base mainnet —
+which also positions Mend for Coinbase's onramp delivering USDC directly to
+a Base address (see `docs/design.md`). Other L2s and cross-chain support are
+speculative and depend on demand and use cases that emerge.
