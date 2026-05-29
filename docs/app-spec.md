@@ -64,7 +64,8 @@ No backend. Lists come from event logs (viem `getLogs`); current balance from a 
 ## Config and secrets
 
 - `VITE_PRIVY_APP_ID` — public Privy app id (safe client-side by design).
-- Pimlico bundler/paymaster URL with a restricted key (domain / chain / contract allowlist), per `design.md`. Client-side is acceptable on testnet.
+- `VITE_PIMLICO_SPONSORSHIP_POLICY_ID` (optional) — a non-secret Pimlico policy identifier.
+- The Pimlico bundler + paymaster URLs (which embed the API key) are registered in the **Privy dashboard**, not in the frontend — so no Pimlico key ever reaches the app code or env. Privy routes sponsored sends through them automatically.
 - No private keys and no server secrets in the frontend.
 
 ## Verification
