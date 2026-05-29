@@ -15,7 +15,7 @@ M1 complete: contracts (`MendFactory.sol`, `MendGroup.sol`) implemented, tested 
 - `forge fmt` — format Solidity sources
 - `forge lint` — run forge-lint (suppressions via `// forge-lint: disable-next-line(rule)` comments)
 
-**Source files:** `src/MendFactory.sol`, `src/MendGroup.sol` — M1 implementation complete; see `docs/specs.md` for the per-function spec.
+**Source files:** `src/MendFactory.sol`, `src/MendGroup.sol` — M1 implementation complete; see `docs/contract-spec.md` for the per-function spec.
 
 ## Load-bearing design constraints (from `docs/design.md`)
 
@@ -41,7 +41,7 @@ These are the decisions that future work must be evaluated against. Re-read `doc
 
 - `README.md` — public project front door.
 - `docs/design.md` — living design rationale for Mend (currently through M2). The *why*. Read this before proposing design changes.
-- `docs/specs.md` — function-by-function contract specification. The *what*.
+- `docs/contract-spec.md` — function-by-function contract specification. The *what*.
 - `docs/future-notes.md` — informal notes for M2/M3/M4. Not specs.
 - `src/` — contract source. `MendFactory.sol` and `MendGroup.sol`.
 - `test/` — Solidity test files (`.t.sol` suffix).

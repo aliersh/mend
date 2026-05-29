@@ -11,7 +11,7 @@ Mend is a non-custodial system for tracking and settling shared expenses on-chai
 
 The contract is implemented, tested, and deployed. The application layer is the current focus — the milestone labeled M2 in the roadmap. Throughout, the contract never holds funds: settlement routes USDC directly from the debtor's wallet to the creditor's wallet.
 
-This document explains the design and the reasoning behind it. The function-by-function contract specification lives in [`specs.md`](specs.md).
+This document explains the design and the reasoning behind it. The function-by-function contract specification lives in [`contract-spec.md`](contract-spec.md).
 
 ## Problem statement
 
@@ -149,6 +149,6 @@ Onboarding (M2) comes before multi-party (M3) deliberately: multi-party math is 
 
 ## References
 
-- [`specs.md`](specs.md) — contract specification
+- [`contract-spec.md`](contract-spec.md) — contract specification
 - [`README.md`](../README.md) — project front door
 - [Privy](https://docs.privy.io) · [Pimlico](https://docs.pimlico.io) · [ZeroDev / Kernel](https://docs.zerodev.app) · [wagmi](https://wagmi.sh) · [viem](https://viem.sh)

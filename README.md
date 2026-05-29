@@ -49,7 +49,7 @@ Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. 
 ## Documentation
 
 - [`docs/design.md`](docs/design.md) — design rationale (the *why*)
-- [`docs/specs.md`](docs/specs.md) — contract specification (the *what*)
+- [`docs/contract-spec.md`](docs/contract-spec.md) — contract specification (the *what*)
 
 ## Security
 

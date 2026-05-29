@@ -1,6 +1,6 @@
-# Mend — M1 Contract Specification
+# Mend — Contract Specification
 
-**Status:** Draft, pending implementation
+**Status:** Implemented, tested, and deployed to Base Sepolia
 **Authoritative source for:** function signatures, storage layout, validation rules, events, errors
 **Companion doc:** `docs/design.md` explains the *why*; this document specifies the *what*.
 
