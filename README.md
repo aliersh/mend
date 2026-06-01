@@ -71,7 +71,7 @@ See [`docs/design.md`](docs/design.md) for the reasoning behind the milestone or
 
 ## About
 
-Built by [Ariel Diaz](https://github.com/aliersh), formerly Smart Contract Engineer at OP Labs (Optimism).
+Built by [Ariel Diaz](https://github.com/aliersh).
 
 ## License
 
