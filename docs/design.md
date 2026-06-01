@@ -82,7 +82,7 @@ The decisions fall into two groups: the settlement contract (the primitive) and 
 
 13. **Vite + React single-page app.** Mend has no server-side state — the contract is the source of truth, and reads come from the chain and its event logs — so a client-only application matches the architecture directly and keeps a single mental model. It builds to a static bundle. A server framework would add a layer the application does not need yet.
 
-14. **wagmi + viem for contract interaction.** The standard typed React hooks over a typed Ethereum library; there is no meaningfully different alternative. Reads come from the chain and from `ExpenseAdded` / `ExpenseEdited` / `ExpenseDeleted` events, since the contract exposes no bulk-read helpers by design.
+14. **viem for contract interaction.** A typed Ethereum library; reads come from the chain and from `ExpenseAdded` / `ExpenseEdited` / `ExpenseDeleted` event logs (the contract exposes no bulk-read helpers by design). wagmi (React hooks over viem) was considered but not adopted: the bulk of the app's reads are `getLogs`, which has no clean wagmi hook, and writes go through Privy's smart-wallet client rather than wagmi — so its caching ergonomics would not earn the added dependency stack (wagmi + react-query + a connector). Revisit if shared read/write caching becomes valuable; adding it later is additive and reversible.
 
 ## Architecture
 
