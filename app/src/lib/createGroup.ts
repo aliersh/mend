@@ -1,15 +1,11 @@
 import {
-  createPublicClient,
   encodeFunctionData,
-  http,
   parseEventLogs,
   type Address,
   type Hex,
 } from 'viem'
 import { CHAIN, FACTORY_ADDRESS, factoryAbi } from '../config'
-
-// Read-only client used to fetch the receipt and decode logs after a write.
-const publicClient = createPublicClient({ chain: CHAIN, transport: http() })
+import { publicClient } from './client'
 
 // Privy's useSmartWallets() client turns this request into a sponsored
 // UserOperation. We type only the call we make, so this module stays decoupled
