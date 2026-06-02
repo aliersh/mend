@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
-import { formatUnits, getAddress, isAddress, type Address, type Hex } from 'viem'
+import { formatUnits, getAddress, isAddress, parseUnits, type Address, type Hex } from 'viem'
+import { publicClient } from './lib/client'
 import { submitCreateGroup, fetchGroupAddress } from './lib/createGroup'
+import { submitAddExpense } from './lib/addExpense'
 import { fetchMyGroups, type GroupItem } from './lib/fetchGroups'
 import {
   fetchBalance,
@@ -47,6 +49,13 @@ export function App() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
+  // ── add-expense state ─────────────────────────────────────────────────────────
+  const [addPayer, setAddPayer]             = useState<'me' | 'counterparty'>('me')
+  const [addAmount, setAddAmount]           = useState('')
+  const [addDescription, setAddDescription] = useState('')
+  const [addSubmitting, setAddSubmitting]   = useState(false)
+  const [addError, setAddError]             = useState<string | null>(null)
+
   const validationError = useMemo(() => {
     if (!counterparty) return null
     if (!isAddress(counterparty)) return 'Not a valid address.'
@@ -62,23 +71,31 @@ export function App() {
     loadGroups(smartAccount)
   }, [smartAccount])
 
+  async function loadDetail(group: GroupItem, opts?: { silent?: boolean }) {
+    if (!opts?.silent) {
+      setBalance(null)
+      setExpenses([])
+      setDetailError(null)
+      setLoadingDetail(true)
+    }
+    try {
+      const [bal, logs] = await Promise.all([
+        fetchBalance(group.address),
+        fetchExpenseHistory(group.address, group.createdBlock),
+      ])
+      setBalance(bal)
+      setExpenses(reconstructExpenses(logs))
+    } catch (e) {
+      setDetailError(e instanceof Error ? e.message : String(e))
+    } finally {
+      if (!opts?.silent) setLoadingDetail(false)
+    }
+  }
+
   // Load balance + expense history when a group is selected.
   useEffect(() => {
     if (!selectedGroup || !smartAccount) return
-    setBalance(null)
-    setExpenses([])
-    setDetailError(null)
-    setLoadingDetail(true)
-    Promise.all([
-      fetchBalance(selectedGroup.address),
-      fetchExpenseHistory(selectedGroup.address, selectedGroup.createdBlock),
-    ])
-      .then(([bal, logs]) => {
-        setBalance(bal)
-        setExpenses(reconstructExpenses(logs))
-      })
-      .catch((e) => setDetailError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoadingDetail(false))
+    loadDetail(selectedGroup)
   }, [selectedGroup, smartAccount])
 
   async function loadGroups(account: Address) {
@@ -107,6 +124,45 @@ export function App() {
       balance !== null
         ? interpretBalance(balance, smartAccount, selectedGroup.memberA)
         : null
+
+    async function onAddExpense() {
+      if (!client || !smartAccount || !selectedGroup) return
+      let parsedAmount: bigint
+      try {
+        parsedAmount = parseUnits(addAmount, 6)
+      } catch {
+        setAddError('Invalid amount.')
+        return
+      }
+      if (parsedAmount <= 0n) {
+        setAddError('Amount must be greater than 0.')
+        return
+      }
+      if (!addDescription.trim()) {
+        setAddError('Description is required.')
+        return
+      }
+      const payer = addPayer === 'me' ? smartAccount : selectedGroup.counterparty
+      setAddSubmitting(true)
+      setAddError(null)
+      try {
+        const hash = await submitAddExpense(
+          async (req) => (await client.sendTransaction(req)) as Hex,
+          selectedGroup.address,
+          payer,
+          parsedAmount,
+          addDescription.trim(),
+        )
+        await publicClient.waitForTransactionReceipt({ hash })
+        await loadDetail(selectedGroup, { silent: true })
+        setAddAmount('')
+        setAddDescription('')
+      } catch (e) {
+        setAddError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setAddSubmitting(false)
+      }
+    }
 
     return (
       <main style={page}>
@@ -140,6 +196,41 @@ export function App() {
             <span>{formatUnits(e.amount, 6)} USDC — paid by <code style={{ fontSize: '0.85em' }}>{e.payer}</code></span>
           </div>
         ))}
+
+        <h3>Add expense</h3>
+        <div>
+          <label>
+            <input
+              type="radio" name="payer" value="me"
+              checked={addPayer === 'me'}
+              onChange={() => setAddPayer('me')}
+            /> I paid
+          </label>
+          {' '}
+          <label>
+            <input
+              type="radio" name="payer" value="counterparty"
+              checked={addPayer === 'counterparty'}
+              onChange={() => setAddPayer('counterparty')}
+            /> Counterparty paid
+          </label>
+        </div>
+        <input
+          placeholder="Amount (USDC, e.g. 12.50)"
+          value={addAmount}
+          onChange={(e) => setAddAmount(e.target.value)}
+        />
+        <input
+          placeholder="Description"
+          value={addDescription}
+          onChange={(e) => setAddDescription(e.target.value)}
+        />
+        <div>
+          <button onClick={onAddExpense} disabled={addSubmitting || !client}>
+            {addSubmitting ? 'Sending (sponsored)…' : 'Add expense'}
+          </button>
+        </div>
+        {addError && <p style={{ color: 'crimson' }}>{addError}</p>}
       </main>
     )
   }

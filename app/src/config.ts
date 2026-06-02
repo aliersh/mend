@@ -78,4 +78,19 @@ export const groupAbi = [
       { name: 'deletedBy', type: 'address', indexed: true },
     ],
   },
+  {
+    type: 'function',
+    name: 'addExpense',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'payer',       type: 'address' },
+      { name: 'amount',      type: 'uint256' },
+      { name: 'description', type: 'string'  },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  { type: 'error', name: 'AmountMustBePositive', inputs: [] },
+  { type: 'error', name: 'InvalidPayer',         inputs: [{ name: 'payer', type: 'address' }] },
+  { type: 'error', name: 'DescriptionRequired',  inputs: [] },
+  { type: 'error', name: 'NotAMember',           inputs: [] },
 ] as const
