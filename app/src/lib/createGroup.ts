@@ -4,14 +4,16 @@ import {
   type Address,
   type Hex,
 } from 'viem'
-import { CHAIN, FACTORY_ADDRESS, factoryAbi } from '../config'
+import { FACTORY_ADDRESS, factoryAbi } from '../config'
 import { publicClient } from './client'
 
 // Privy's useSmartWallets() client turns this request into a sponsored
 // UserOperation. We type only the call we make, so this module stays decoupled
-// from Privy's client type.
+// from Privy's client type. We deliberately omit `chain`: the SmartWallets
+// client is already bound to a single chain (defaultChain/supportedChains in
+// providers.tsx), so passing it again is redundant. It is also the one field
+// whose viem `Chain` type won't unify across Privy's pinned viem copy and ours.
 type SendUserOperation = (request: {
-  chain: typeof CHAIN
   to: Address
   data: Hex
 }) => Promise<Hex>
@@ -29,7 +31,7 @@ export async function submitCreateGroup(
     functionName: 'createGroup',
     args: [counterparty],
   })
-  return send({ chain: CHAIN, to: FACTORY_ADDRESS, data })
+  return send({ to: FACTORY_ADDRESS, data })
 }
 
 // Resolve the deployed group address from the receipt's GroupCreated log. Kept
