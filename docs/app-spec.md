@@ -17,13 +17,13 @@ What the app does:
 Not yet built (added here as they land):
 
 - Editing and deleting expenses.
-- Settlement, including the USDC approval (surfaced as "budget") and the funding flow.
+- Settlement: approving the exact amount owed and calling `settle()`, plus surfacing the testnet funding step (in progress; see flow 6).
 - Group naming, friendlier counterparty discovery (ENS / contacts / QR), visual polish, and automated frontend tests.
 
 ## Stack and layout
 
 - Frontend lives in `app/` within the mend monorepo: Vite + React SPA.
-- Auth + embedded wallet: **Privy**. Smart account: **Kernel** (ZeroDev), via Privy. Bundler + paymaster: **Pimlico**. Contract reads/writes: **wagmi + viem**.
+- Auth + embedded wallet: **Privy**. Smart account: **Kernel** (ZeroDev), via Privy. Bundler + paymaster: **Pimlico**. Contract reads/writes: **viem**.
 - Target chain: **Base Sepolia** (chain id 84532). Factory: `0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da`. USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
 - Config via Vite env vars (`VITE_`-prefixed, client-side). No backend, no server secrets.
 
@@ -56,6 +56,14 @@ Read-only. Show the current `balance` (direct call) and the expense history (rec
 - Write (gasless): `group.addExpense(payer, amount, description)`.
 - Validate client-side: amount > 0, description non-empty, payer is a member.
 - On success, refresh the balance and expense list.
+
+### 6. Settle
+
+- Shown in group detail only when `balance != 0` and the user is the debtor (per the sign convention). `settle()` is debtor-only on-chain, so the creditor sees no Settle action.
+- Pre-checks before enabling the action: the user is the debtor, and their smart account's USDC balance covers the debt. If the balance is short, surface the amount needed and the Circle Base Sepolia faucet (testnet funding is manual; a real onramp is out of scope, see `design.md`).
+- Write flow (both gasless): approve the **exact** amount owed to the `MendGroup` contract, then call `settle()`. No standing budget; the allowance returns to zero once settle consumes it.
+- On success, the balance is zero (settled) and USDC has moved debtor to creditor; refresh the balance.
+- Verify at first run that the approve UserOp is sponsored (the paymaster policy must cover the approve to the USDC contract, not only `MendGroup` calls).
 
 ## Reads and state
 

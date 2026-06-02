@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { formatUnits, getAddress, isAddress, parseUnits, type Address, type Hex } from 'viem'
+import { USDC_ADDRESS } from './config'
 import { publicClient } from './lib/client'
 import { submitCreateGroup, fetchGroupAddress } from './lib/createGroup'
 import { submitAddExpense } from './lib/addExpense'
+import { submitApprove, submitSettle, fetchUsdcBalance } from './lib/settle'
 import { fetchMyGroups, type GroupItem } from './lib/fetchGroups'
 import {
   fetchBalance,
@@ -49,6 +51,11 @@ export function App() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
+  // ── settle state ─────────────────────────────────────────────────────────────
+  const [usdcBalance, setUsdcBalance]       = useState<bigint | null>(null)
+  const [settleSubmitting, setSettleSubmitting] = useState(false)
+  const [settleError, setSettleError]       = useState<string | null>(null)
+
   // ── add-expense state ─────────────────────────────────────────────────────────
   const [addPayer, setAddPayer]             = useState<'me' | 'counterparty'>('me')
   const [addAmount, setAddAmount]           = useState('')
@@ -76,15 +83,19 @@ export function App() {
       setBalance(null)
       setExpenses([])
       setDetailError(null)
+      setUsdcBalance(null)
+      setSettleError(null)
       setLoadingDetail(true)
     }
     try {
-      const [bal, logs] = await Promise.all([
+      const [bal, logs, usdc] = await Promise.all([
         fetchBalance(group.address),
         fetchExpenseHistory(group.address, group.createdBlock),
+        smartAccount ? fetchUsdcBalance(smartAccount) : Promise.resolve(null),
       ])
       setBalance(bal)
       setExpenses(reconstructExpenses(logs))
+      setUsdcBalance(usdc)
     } catch (e) {
       setDetailError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -124,6 +135,32 @@ export function App() {
       balance !== null
         ? interpretBalance(balance, smartAccount, selectedGroup.memberA)
         : null
+
+    async function onSettle() {
+      if (!client || !smartAccount || !selectedGroup || balance === null) return
+      const debt = balance < 0n ? -balance : balance
+      setSettleSubmitting(true)
+      setSettleError(null)
+      try {
+        const approveHash = await submitApprove(
+          async (req) => (await client.sendTransaction(req)) as Hex,
+          USDC_ADDRESS,
+          selectedGroup.address,
+          debt,
+        )
+        await publicClient.waitForTransactionReceipt({ hash: approveHash })
+        const settleHash = await submitSettle(
+          async (req) => (await client.sendTransaction(req)) as Hex,
+          selectedGroup.address,
+        )
+        await publicClient.waitForTransactionReceipt({ hash: settleHash })
+        await loadDetail(selectedGroup, { silent: true })
+      } catch (e) {
+        setSettleError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setSettleSubmitting(false)
+      }
+    }
 
     async function onAddExpense() {
       if (!client || !smartAccount || !selectedGroup) return
@@ -187,6 +224,32 @@ export function App() {
             )}
           </p>
         )}
+
+        {display?.direction === 'i_owe_counterparty' && balance !== null && (() => {
+          const debt = balance < 0n ? -balance : balance
+          return (
+            <>
+              <h3>Settle</h3>
+              {usdcBalance !== null && usdcBalance < debt ? (
+                <p>
+                  You need{' '}
+                  <strong>{formatUnits(debt - usdcBalance, 6)} more USDC</strong>
+                  {' '}to settle.{' '}
+                  <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">
+                    Get testnet USDC
+                  </a>
+                </p>
+              ) : (
+                <div>
+                  <button onClick={onSettle} disabled={settleSubmitting || !client}>
+                    {settleSubmitting ? 'Settling…' : `Settle ${display.amount} USDC`}
+                  </button>
+                  {settleError && <p style={{ color: 'crimson' }}>{settleError}</p>}
+                </div>
+              )}
+            </>
+          )
+        })()}
 
         <h3>Expenses</h3>
         {expenses.length === 0 && !loadingDetail && <p style={{ color: 'grey' }}>No expenses yet.</p>}

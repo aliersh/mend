@@ -76,7 +76,7 @@ The decisions fall into two groups: the settlement contract (the primitive) and 
 
 10. **Privy for authentication and embedded wallet.** Privy handles login (email, social, or passkey) and provisions an embedded smart account behind it. It supports the target chain with gas sponsorship, and it supports key export, which is what preserves the no-platform-dependency property (see Trust model).
 
-11. **Pimlico for bundler and paymaster.** Pimlico packages user operations into transactions (bundler) and sponsors their gas (paymaster), making tracking operations and the one-time approval free to the user. It is the bundler Privy routes to by default. The application uses a project-owned key with restrictions, not the public rate-limited endpoint. Pimlico's bundler is confirmed on Base Sepolia; paymaster coverage there is to be confirmed against a live endpoint during the build.
+11. **Pimlico for bundler and paymaster.** Pimlico packages user operations into transactions (bundler) and sponsors their gas (paymaster), making expense tracking and settlement approvals free to the user. It is the bundler Privy routes to by default. The application uses a project-owned key with restrictions, not the public rate-limited endpoint. Pimlico's bundler is confirmed on Base Sepolia; paymaster coverage there is to be confirmed against a live endpoint during the build.
 
 12. **Kernel (ZeroDev) smart account.** A smart account is a contract, and the implementation comes from an audited, reusable codebase. Kernel is the most widely adopted single-owner account on L2s, is modular under ERC-7579 (leaving room to add passkeys later), and is confirmed working on the EntryPoint version Privy uses with Pimlico. It is swappable from the Privy dashboard, so the choice carries low lock-in.
 
@@ -123,10 +123,10 @@ In sum, the on-chain trust model is unchanged — the contract still holds no fu
 
 Gas sponsorship covers gas, not the money being moved. `settle()` calls `safeTransferFrom`, which needs two things the paymaster cannot provide:
 
-1. **A one-time USDC approval** from the user's smart account to the `MendGroup` contract. This is itself a sponsored, gasless operation, but it must happen before the first settlement. It is surfaced to the user as their **"budget"** — the maximum Mend can move on their behalf — avoiding ERC-20 jargon in user-facing copy.
+1. **A USDC approval** from the user's smart account to the `MendGroup` contract, sized to exactly the amount owed and granted as part of each settlement rather than as a standing pre-approved "budget". This is itself a sponsored, gasless operation. Approving the exact debt keeps the allowance minimal (it returns to zero once `settle()` consumes it), which fits the non-custodial trust model and removes a confusing decision for a non-crypto user: there is no "how much budget?" question, and because an approval is only a permission, it never moves or reserves their funds. The transfer happens only at `settle()`.
 2. **An actual USDC balance** in the user's account. This is the hard part: a non-crypto user has no USDC, and no amount of gas sponsorship creates it.
 
-On testnet, USDC comes from Circle's Base Sepolia faucet, sent to the smart account address — a manual step outside the app, and acceptable friction for a testnet validation between a known pair of users. The interface must check the current allowance before offering the Settle action, so a user never submits a settlement that reverts, and should warn when the budget is low.
+On testnet, USDC comes from Circle's Base Sepolia faucet, sent to the smart account address — a manual step outside the app, and acceptable friction for a testnet validation between a known pair of users. The settle flow approves the exact debt and then calls `settle()`; before offering the action, the interface checks that the user's USDC balance covers the debt (and surfaces the faucet step when it is short), so a user never submits a settlement that reverts.
 
 For real use on mainnet, the funding problem is solved by a fiat onramp; choosing Base positions Mend for Coinbase's onramp, which delivers USDC directly into a Base address. That integration is out of scope here and named only to record why funding is left manual rather than considered solved.
 
