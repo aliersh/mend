@@ -1,6 +1,6 @@
 # Mend — Application Spec
 
-**Status:** In development. Covers onboarding, group creation, expense entry, and reads. This document grows as more of the app is built.
+**Status:** In development. Covers onboarding, group creation, expense entry (add, edit, delete), reads, and settlement. This document grows as more of the app is built.
 **Companions:** [`design.md`](design.md) (the *why*), [`contract-spec.md`](contract-spec.md) (the contract interface).
 
 ---
@@ -12,12 +12,12 @@ What the app does:
 - **Onboarding.** Email/social login (Privy) that provisions a Kernel smart account.
 - **Create a group** with a counterparty — gasless `createGroup`.
 - **Add an expense** to a group — gasless `addExpense`.
+- **Edit and delete expenses**, gasless: `editExpense` / `deleteExpense`.
 - **List groups** and **view a group's balance + expense history** — reads.
+- **Settle** the balance, gasless: approve the exact debt, then call `settle()`.
 
 Not yet built (added here as they land):
 
-- Editing and deleting expenses.
-- Settlement: approving the exact amount owed and calling `settle()`, plus surfacing the testnet funding step (in progress; see flow 6).
 - Group naming, friendlier counterparty discovery (ENS / contacts / QR), visual polish, and automated frontend tests.
 
 ## Stack and layout
@@ -63,7 +63,7 @@ Read-only. Show the current `balance` (direct call) and the expense history (rec
 - Pre-checks before enabling the action: the user is the debtor, and their smart account's USDC balance covers the debt. If the balance is short, surface the amount needed and the Circle Base Sepolia faucet (testnet funding is manual; a real onramp is out of scope, see `design.md`).
 - Write flow (both gasless): approve the **exact** amount owed to the `MendGroup` contract, then call `settle()`. No standing budget; the allowance returns to zero once settle consumes it.
 - On success, the balance is zero (settled) and USDC has moved debtor to creditor; refresh the balance.
-- Verify at first run that the approve UserOp is sponsored (the paymaster policy must cover the approve to the USDC contract, not only `MendGroup` calls).
+- Both writes are sponsored: the paymaster policy covers the approve to the USDC contract as well as the `MendGroup` call (confirmed on Base Sepolia).
 
 ## Reads and state
 
