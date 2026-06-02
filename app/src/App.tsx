@@ -6,6 +6,8 @@ import { USDC_ADDRESS } from './config'
 import { publicClient } from './lib/client'
 import { submitCreateGroup, fetchGroupAddress } from './lib/createGroup'
 import { submitAddExpense } from './lib/addExpense'
+import { submitEditExpense } from './lib/editExpense'
+import { submitDeleteExpense } from './lib/deleteExpense'
 import { submitApprove, submitSettle, fetchUsdcBalance } from './lib/settle'
 import { fetchMyGroups, type GroupItem } from './lib/fetchGroups'
 import {
@@ -62,6 +64,18 @@ export function App() {
   const [addDescription, setAddDescription] = useState('')
   const [addSubmitting, setAddSubmitting]   = useState(false)
   const [addError, setAddError]             = useState<string | null>(null)
+
+  // ── edit-expense state ────────────────────────────────────────────────────────
+  const [editingId,       setEditingId]       = useState<bigint | null>(null)
+  const [editPayer,       setEditPayer]       = useState<'me' | 'counterparty'>('me')
+  const [editAmount,      setEditAmount]      = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editSubmitting,  setEditSubmitting]  = useState(false)
+  const [editError,       setEditError]       = useState<string | null>(null)
+
+  // ── delete-expense state ──────────────────────────────────────────────────────
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteError,      setDeleteError]      = useState<string | null>(null)
 
   const validationError = useMemo(() => {
     if (!counterparty) return null
@@ -201,6 +215,78 @@ export function App() {
       }
     }
 
+    function onStartEdit(expense: ExpenseEntry) {
+      setEditingId(expense.id)
+      setEditPayer(smartAccount && getAddress(expense.payer) === getAddress(smartAccount) ? 'me' : 'counterparty')
+      setEditAmount(formatUnits(expense.amount, 6))
+      setEditDescription(expense.description)
+      setEditError(null)
+    }
+
+    function onCancelEdit() {
+      setEditingId(null)
+      setEditError(null)
+    }
+
+    async function onSaveEdit() {
+      if (!client || !smartAccount || !selectedGroup || editingId === null) return
+      let parsedAmount: bigint
+      try {
+        parsedAmount = parseUnits(editAmount, 6)
+      } catch {
+        setEditError('Invalid amount.')
+        return
+      }
+      if (parsedAmount <= 0n) {
+        setEditError('Amount must be greater than 0.')
+        return
+      }
+      if (!editDescription.trim()) {
+        setEditError('Description is required.')
+        return
+      }
+      const payer = editPayer === 'me' ? smartAccount : selectedGroup.counterparty
+      setEditSubmitting(true)
+      setEditError(null)
+      try {
+        const hash = await submitEditExpense(
+          async (req) => (await client.sendTransaction(req)) as Hex,
+          selectedGroup.address,
+          editingId,
+          payer,
+          parsedAmount,
+          editDescription.trim(),
+        )
+        await publicClient.waitForTransactionReceipt({ hash })
+        await loadDetail(selectedGroup, { silent: true })
+        setEditingId(null)
+      } catch (e) {
+        setEditError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setEditSubmitting(false)
+      }
+    }
+
+    async function onDeleteExpense(expenseId: bigint) {
+      if (!client || !smartAccount || !selectedGroup) return
+      if (!window.confirm('Delete this expense?')) return
+      setDeleteSubmitting(true)
+      setDeleteError(null)
+      try {
+        const hash = await submitDeleteExpense(
+          async (req) => (await client.sendTransaction(req)) as Hex,
+          selectedGroup.address,
+          expenseId,
+        )
+        await publicClient.waitForTransactionReceipt({ hash })
+        await loadDetail(selectedGroup, { silent: true })
+      } catch (e) {
+        setDeleteError(e instanceof Error ? e.message : String(e))
+      } finally {
+        setDeleteSubmitting(false)
+      }
+    }
+
     return (
       <main style={page}>
         <button onClick={() => setSelectedGroup(null)}>← Back</button>
@@ -253,10 +339,60 @@ export function App() {
 
         <h3>Expenses</h3>
         {expenses.length === 0 && !loadingDetail && <p style={{ color: 'grey' }}>No expenses yet.</p>}
+        {deleteError && <p style={{ color: 'crimson' }}>{deleteError}</p>}
         {expenses.filter((e) => !e.deleted).map((e) => (
           <div key={String(e.id)} style={expenseRow}>
-            <span><strong>{e.description}</strong></span>
-            <span>{formatUnits(e.amount, 6)} USDC — paid by <code style={{ fontSize: '0.85em' }}>{e.payer}</code></span>
+            {editingId === e.id ? (
+              <div>
+                <div>
+                  <label>
+                    <input
+                      type="radio" name="edit-payer" value="me"
+                      checked={editPayer === 'me'}
+                      onChange={() => setEditPayer('me')}
+                    /> I paid
+                  </label>
+                  {' '}
+                  <label>
+                    <input
+                      type="radio" name="edit-payer" value="counterparty"
+                      checked={editPayer === 'counterparty'}
+                      onChange={() => setEditPayer('counterparty')}
+                    /> Counterparty paid
+                  </label>
+                </div>
+                <input
+                  placeholder="Amount (USDC)"
+                  value={editAmount}
+                  onChange={(ev) => setEditAmount(ev.target.value)}
+                />
+                <input
+                  placeholder="Description"
+                  value={editDescription}
+                  onChange={(ev) => setEditDescription(ev.target.value)}
+                />
+                <div>
+                  <button onClick={onSaveEdit} disabled={editSubmitting || !client}>
+                    {editSubmitting ? 'Saving…' : 'Save'}
+                  </button>
+                  {' '}
+                  <button onClick={onCancelEdit} disabled={editSubmitting}>Cancel</button>
+                </div>
+                {editError && <p style={{ color: 'crimson' }}>{editError}</p>}
+              </div>
+            ) : (
+              <div>
+                <span><strong>{e.description}</strong></span>
+                {' '}
+                <span>{formatUnits(e.amount, 6)} USDC — paid by <code style={{ fontSize: '0.85em' }}>{e.payer}</code></span>
+                {' '}
+                <button onClick={() => onStartEdit(e)} disabled={deleteSubmitting || editingId !== null}>Edit</button>
+                {' '}
+                <button onClick={() => onDeleteExpense(e.id)} disabled={deleteSubmitting || editingId !== null}>
+                  {deleteSubmitting ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            )}
           </div>
         ))}
 

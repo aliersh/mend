@@ -102,6 +102,27 @@ export const groupAbi = [
   },
   { type: 'error', name: 'AlreadySettled', inputs: [] },
   { type: 'error', name: 'NotDebtor',      inputs: [] },
+  {
+    type: 'function',
+    name: 'editExpense',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'expenseId',      type: 'uint256' },
+      { name: 'newPayer',       type: 'address' },
+      { name: 'newAmount',      type: 'uint256' },
+      { name: 'newDescription', type: 'string'  },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'deleteExpense',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'expenseId', type: 'uint256' }],
+    outputs: [],
+  },
+  { type: 'error', name: 'ExpenseDoesNotExist', inputs: [{ name: 'expenseId', type: 'uint256' }] },
+  { type: 'error', name: 'ExpenseIsDeleted',    inputs: [{ name: 'expenseId', type: 'uint256' }] },
 ] as const
 
 // Minimal USDC interface: allowance approval and balance check for the settle flow.
