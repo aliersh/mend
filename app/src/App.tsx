@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { getAddress, isAddress } from 'viem'
@@ -22,12 +23,25 @@ function useSmartAccountAddress(): Address | undefined {
   }, [user])
 }
 
+function GroupDetailWrapper({
+  smartAccount,
+  send,
+}: {
+  smartAccount: Address | undefined
+  send: SendUserOperation | undefined
+}) {
+  const { address } = useParams<{ address: string }>()
+  if (!address || !isAddress(address)) return <Navigate to="/" replace />
+  if (!smartAccount) return <main style={page}><p>Loading…</p></main>
+  // key forces remount on address change, preserving the mount-only useEffect invariant
+  return <GroupDetail key={address} address={address} smartAccount={smartAccount} send={send} />
+}
+
 export function App() {
   const { ready, authenticated, login, logout } = usePrivy()
   const { client } = useSmartWallets()
   const smartAccount = useSmartAccountAddress()
-
-  const [selectedGroup, setSelectedGroup] = useState<GroupItem | null>(null)
+  const navigate = useNavigate()
 
   // groups state lives here so it persists across home/detail navigation and
   // loads exactly once when smartAccount first becomes available.
@@ -126,36 +140,38 @@ export function App() {
     )
   }
 
-  if (selectedGroup && smartAccount) {
-    return (
-      <GroupDetail
-        group={selectedGroup}
-        smartAccount={smartAccount}
-        send={send}
-        onBack={() => setSelectedGroup(null)}
-      />
-    )
-  }
-
   return (
-    <HomeView
-      smartAccount={smartAccount}
-      send={send}
-      groups={groups}
-      loadingGroups={loadingGroups}
-      groupsInitialized={groupsInitialized}
-      onSelectGroup={setSelectedGroup}
-      logout={logout}
-      counterparty={counterparty}
-      onCounterpartyChange={setCounterparty}
-      submitting={submitting}
-      txHash={txHash}
-      createdGroup={createdGroup}
-      groupNote={groupNote}
-      createError={createError}
-      validationError={validationError}
-      onCreate={onCreate}
-    />
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <HomeView
+            smartAccount={smartAccount}
+            send={send}
+            groups={groups}
+            loadingGroups={loadingGroups}
+            groupsInitialized={groupsInitialized}
+            onSelectGroup={(group) =>
+              navigate('/group/' + group.address, { state: { group } })
+            }
+            logout={logout}
+            counterparty={counterparty}
+            onCounterpartyChange={setCounterparty}
+            submitting={submitting}
+            txHash={txHash}
+            createdGroup={createdGroup}
+            groupNote={groupNote}
+            createError={createError}
+            validationError={validationError}
+            onCreate={onCreate}
+          />
+        }
+      />
+      <Route
+        path="/group/:address"
+        element={<GroupDetailWrapper smartAccount={smartAccount} send={send} />}
+      />
+    </Routes>
   )
 }
 

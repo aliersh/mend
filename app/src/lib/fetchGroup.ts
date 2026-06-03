@@ -89,6 +89,16 @@ export function reconstructExpenses(logs: ExpenseHistoryLogs): ExpenseEntry[] {
   return [...map.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 }
 
+export async function fetchGroupMembers(
+  address: Address,
+): Promise<{ memberA: Address; memberB: Address }> {
+  const [memberA, memberB] = await Promise.all([
+    publicClient.readContract({ address, abi: groupAbi, functionName: 'memberA' }),
+    publicClient.readContract({ address, abi: groupAbi, functionName: 'memberB' }),
+  ])
+  return { memberA, memberB }
+}
+
 // Sign convention: balance > 0 means memberB owes memberA; < 0 means memberA owes memberB.
 // memberB not needed: two members only, so "not memberA" == memberB.
 export function interpretBalance(

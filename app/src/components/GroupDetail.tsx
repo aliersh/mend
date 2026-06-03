@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { getAddress } from 'viem'
 import type { Address, Hex } from 'viem'
 import type { CSSProperties } from 'react'
-import { fetchBalance, fetchExpenseHistory, reconstructExpenses, interpretBalance } from '../lib/fetchGroup'
+import { fetchBalance, fetchExpenseHistory, reconstructExpenses, interpretBalance, fetchGroupMembers } from '../lib/fetchGroup'
 import type { ExpenseEntry, BalanceDisplay } from '../lib/fetchGroup'
 import { fetchUsdcBalance } from '../lib/settle'
 import type { GroupItem } from '../lib/fetchGroups'
+import { FACTORY_DEPLOY_BLOCK } from '../config'
 import { SettleSection } from './SettleSection'
 import { AddExpenseForm } from './AddExpenseForm'
 import { ExpenseList } from './ExpenseList'
@@ -12,10 +15,9 @@ import { ExpenseList } from './ExpenseList'
 type SendUserOperation = (req: { to: Address; data: Hex }) => Promise<Hex>
 
 type Props = {
-  group: GroupItem
+  address: string
   smartAccount: Address
   send: SendUserOperation | undefined
-  onBack: () => void
 }
 
 // Returns raw fetched values without committing state -- used by both loadDetail
@@ -52,7 +54,17 @@ function snapshotsMatch(a: ExpenseEntry[], b: ExpenseEntry[]): boolean {
   return true
 }
 
-export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
+export function GroupDetail({ address, smartAccount, send }: Props) {
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Lazy initializer: warm-path navigation passes the full GroupItem via
+  // location.state; cold-load (direct URL / reload) starts null and bootstraps.
+  const [resolvedGroup, setResolvedGroup] = useState<GroupItem | null>(
+    () => (location.state as { group?: GroupItem } | null)?.group ?? null,
+  )
+  const [groupError, setGroupError] = useState(false)
+
   const [balance, setBalance] = useState<bigint | null>(null)
   const [expenses, setExpenses] = useState<ExpenseEntry[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -60,6 +72,7 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
   const [usdcBalance, setUsdcBalance] = useState<bigint | null>(null)
 
   async function loadDetail(opts?: { silent?: boolean }) {
+    if (!resolvedGroup) return
     if (!opts?.silent) {
       setBalance(null)
       setExpenses([])
@@ -68,7 +81,7 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
       setLoadingDetail(true)
     }
     try {
-      const { bal, expenses, usdc } = await fetchDetail(group.address, group.createdBlock, smartAccount)
+      const { bal, expenses, usdc } = await fetchDetail(resolvedGroup.address, resolvedGroup.createdBlock, smartAccount)
       setBalance(bal)
       setExpenses(expenses)
       setUsdcBalance(usdc)
@@ -86,10 +99,11 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
   // are not covered by collectInWindows retry, so continuing gives them a real
   // second chance before giving up.
   async function pollUntilChanged(preBalance: bigint | null, preExpenses: ExpenseEntry[]) {
+    if (!resolvedGroup) return
     for (let i = 0; i < 4; i++) {
       if (i > 0) await new Promise((r) => setTimeout(r, 500))
       try {
-        const { bal, expenses, usdc } = await fetchDetail(group.address, group.createdBlock, smartAccount)
+        const { bal, expenses, usdc } = await fetchDetail(resolvedGroup.address, resolvedGroup.createdBlock, smartAccount)
         setBalance(bal)
         setExpenses(expenses)
         setUsdcBalance(usdc)
@@ -100,15 +114,50 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
     }
   }
 
-  // Fires once on mount. GroupDetail is unmounted and remounted whenever the
-  // selected group changes, so this is equivalent to the original
-  // useEffect([selectedGroup, smartAccount]) in the parent.
+  // Cold-load bootstrap: fetches memberA/memberB from the group contract when
+  // no GroupItem was passed via navigation state (direct URL or page reload).
+  // The [] dependency is correct: GroupDetailWrapper's key={address} ensures
+  // each address change produces a fresh component instance, so this fires once.
   useEffect(() => {
-    loadDetail()
+    if (resolvedGroup) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { memberA, memberB } = await fetchGroupMembers(address as Address)
+        if (cancelled) return
+        const counterparty =
+          getAddress(smartAccount) === getAddress(memberA)
+            ? memberB
+            : getAddress(smartAccount) === getAddress(memberB)
+            ? memberA
+            : memberB // non-member read: do not crash
+        setResolvedGroup({
+          address: address as Address,
+          memberA,
+          memberB,
+          counterparty,
+          createdBlock: FACTORY_DEPLOY_BLOCK,
+        })
+      } catch {
+        if (!cancelled) setGroupError(true)
+      }
+    })()
+    return () => { cancelled = true }
   }, [])
 
+  // Fires once resolvedGroup is available. On the warm path resolvedGroup is
+  // set by the useState initializer, so this runs on the first render. On the
+  // cold path it runs after the bootstrap effect sets resolvedGroup.
+  useEffect(() => {
+    if (!resolvedGroup) return
+    loadDetail()
+  }, [resolvedGroup])
+
+  if (groupError) return <main style={page}><p>Group not found.</p></main>
+  if (!resolvedGroup) return <main style={page}><p>Loading…</p></main>
+
   const display: BalanceDisplay | null =
-    balance !== null ? interpretBalance(balance, smartAccount, group.memberA) : null
+    balance !== null ? interpretBalance(balance, smartAccount, resolvedGroup.memberA) : null
 
   // Captures balance/expenses from the current render (pre-write values) and
   // polls until the chain reflects the change.
@@ -116,11 +165,11 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
 
   return (
     <main style={page}>
-      <button onClick={onBack}>← Back</button>
+      <button onClick={() => navigate('/')}>← Back</button>
       <h1>Mend</h1>
-      <h2>Group with <code style={{ fontSize: '0.85em' }}>{group.counterparty}</code></h2>
+      <h2>Group with <code style={{ fontSize: '0.85em' }}>{resolvedGroup.counterparty}</code></h2>
       <p style={{ color: 'grey', fontSize: '0.8em' }}>
-        Contract: <code>{group.address}</code>
+        Contract: <code>{resolvedGroup.address}</code>
       </p>
 
       <h3>Balance</h3>
@@ -144,7 +193,7 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
           usdcBalance={usdcBalance}
           display={display}
           send={send}
-          groupAddress={group.address}
+          groupAddress={resolvedGroup.address}
           onSettled={reload}
         />
       )}
@@ -153,17 +202,17 @@ export function GroupDetail({ group, smartAccount, send, onBack }: Props) {
         expenses={expenses}
         loadingDetail={loadingDetail}
         send={send}
-        groupAddress={group.address}
+        groupAddress={resolvedGroup.address}
         smartAccount={smartAccount}
-        counterparty={group.counterparty}
+        counterparty={resolvedGroup.counterparty}
         onMutated={reload}
       />
 
       <AddExpenseForm
         send={send}
-        groupAddress={group.address}
+        groupAddress={resolvedGroup.address}
         smartAccount={smartAccount}
-        counterparty={group.counterparty}
+        counterparty={resolvedGroup.counterparty}
         onAdded={reload}
       />
     </main>
