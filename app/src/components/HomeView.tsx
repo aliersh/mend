@@ -9,6 +9,7 @@ type Props = {
   send: SendUserOperation | undefined
   groups: GroupItem[]
   loadingGroups: boolean
+  groupsInitialized: boolean
   onSelectGroup: (group: GroupItem) => void
   logout: () => void
   // create-group state (owned by App for persistence across navigation)
@@ -28,6 +29,7 @@ export function HomeView({
   send,
   groups,
   loadingGroups,
+  groupsInitialized,
   onSelectGroup,
   logout,
   counterparty,
@@ -52,7 +54,7 @@ export function HomeView({
 
       <h2>Your groups</h2>
       {loadingGroups && <p>Loading…</p>}
-      {!loadingGroups && groups.length === 0 && (
+      {groupsInitialized && !loadingGroups && groups.length === 0 && (
         <p style={{ color: 'grey' }}>No groups yet. Create one below.</p>
       )}
       {groups.map((g) => (

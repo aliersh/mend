@@ -33,6 +33,7 @@ export function App() {
   // loads exactly once when smartAccount first becomes available.
   const [groups, setGroups] = useState<GroupItem[]>([])
   const [loadingGroups, setLoadingGroups] = useState(false)
+  const [groupsInitialized, setGroupsInitialized] = useState(false)
 
   // create-group state lives here so it survives home/detail/home round-trips.
   const [counterparty, setCounterparty] = useState('')
@@ -52,6 +53,24 @@ export function App() {
       setGroups(await fetchMyGroups(account))
     } finally {
       setLoadingGroups(false)
+      setGroupsInitialized(true)
+    }
+  }
+
+  // Polls fetchMyGroups until expectedAddress appears or 4 attempts are exhausted.
+  // Always commits each fetch result so the list stays fresh during the wait.
+  async function loadGroupsUntilNew(account: Address, expectedAddress: Address) {
+    setLoadingGroups(true)
+    try {
+      for (let i = 0; i < 4; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 500))
+        const fetched = await fetchMyGroups(account)
+        setGroups(fetched)
+        if (fetched.some((g) => getAddress(g.address) === getAddress(expectedAddress))) break
+      }
+    } finally {
+      setLoadingGroups(false)
+      setGroupsInitialized(true)
     }
   }
 
@@ -74,8 +93,9 @@ export function App() {
       // Best-effort: a receipt/parse failure here does not mean the transaction
       // failed (the Basescan link is the proof of that).
       try {
-        setCreatedGroup(await fetchGroupAddress(hash))
-        await loadGroups(smartAccount)
+        const newGroupAddress = await fetchGroupAddress(hash)
+        setCreatedGroup(newGroupAddress)
+        await loadGroupsUntilNew(smartAccount, newGroupAddress)
       } catch (e) {
         setGroupNote(e instanceof Error ? e.message : String(e))
       }
@@ -123,6 +143,7 @@ export function App() {
       send={send}
       groups={groups}
       loadingGroups={loadingGroups}
+      groupsInitialized={groupsInitialized}
       onSelectGroup={setSelectedGroup}
       logout={logout}
       counterparty={counterparty}

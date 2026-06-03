@@ -16,6 +16,10 @@ export const SPONSORSHIP_POLICY_ID = import.meta.env.VITE_PIMLICO_SPONSORSHIP_PO
 // Reads RPC. The chain's canonical public endpoint caps getLogs ranges near 3k
 // blocks and can't serve the factory's full history, so default to a public RPC
 // that handles ~10k-block windows (verified). Override with VITE_RPC_URL.
+// The free public default is unreliable for getLogs: it times out under load and
+// lags behind the chain head when indexing recent blocks, causing post-write reads
+// to return stale data. A dedicated endpoint (e.g. Alchemy) set via VITE_RPC_URL
+// is needed for reliable reads.
 export const RPC_URL = import.meta.env.VITE_RPC_URL ?? 'https://base-sepolia.drpc.org'
 
 
