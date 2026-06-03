@@ -1,4 +1,6 @@
 import { baseSepolia } from 'viem/chains'
+import { factoryAbi, groupAbi } from './generated/contracts'
+export { factoryAbi, groupAbi }
 
 export const CHAIN = baseSepolia
 
@@ -16,114 +18,6 @@ export const SPONSORSHIP_POLICY_ID = import.meta.env.VITE_PIMLICO_SPONSORSHIP_PO
 // that handles ~10k-block windows (verified). Override with VITE_RPC_URL.
 export const RPC_URL = import.meta.env.VITE_RPC_URL ?? 'https://base-sepolia.drpc.org'
 
-// Minimal factory interface: the one write call (createGroup), the event we read
-// back from the receipt, and the constructor-validation errors so viem can
-// decode a sponsored revert into a named error instead of a raw selector.
-export const factoryAbi = [
-  {
-    type: 'function',
-    name: 'createGroup',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'otherMember', type: 'address' }],
-    outputs: [{ name: 'group', type: 'address' }],
-  },
-  {
-    type: 'event',
-    name: 'GroupCreated',
-    inputs: [
-      { name: 'group', type: 'address', indexed: true },
-      { name: 'memberA', type: 'address', indexed: true },
-      { name: 'memberB', type: 'address', indexed: true },
-    ],
-  },
-  { type: 'error', name: 'CannotGroupWithSelf', inputs: [] },
-  { type: 'error', name: 'InvalidMemberAddress', inputs: [] },
-] as const
-
-// Minimal group interface: the signed balance getter and the three expense events.
-export const groupAbi = [
-  {
-    type: 'function',
-    name: 'balance',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ name: '', type: 'int256' }], // signed — negative means memberA owes memberB
-  },
-  {
-    type: 'event',
-    name: 'ExpenseAdded',
-    inputs: [
-      { name: 'expenseId',   type: 'uint256', indexed: true },
-      { name: 'payer',       type: 'address', indexed: true },
-      { name: 'amount',      type: 'uint256', indexed: false },
-      { name: 'description', type: 'string',  indexed: false },
-      { name: 'createdAt',   type: 'uint64',  indexed: false },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'ExpenseEdited',
-    inputs: [
-      { name: 'expenseId',   type: 'uint256', indexed: true },
-      { name: 'payer',       type: 'address', indexed: true },
-      { name: 'amount',      type: 'uint256', indexed: false },
-      { name: 'description', type: 'string',  indexed: false },
-    ],
-  },
-  {
-    type: 'event',
-    name: 'ExpenseDeleted',
-    inputs: [
-      { name: 'expenseId', type: 'uint256', indexed: true },
-      { name: 'deletedBy', type: 'address', indexed: true },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'addExpense',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'payer',       type: 'address' },
-      { name: 'amount',      type: 'uint256' },
-      { name: 'description', type: 'string'  },
-    ],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  { type: 'error', name: 'AmountMustBePositive', inputs: [] },
-  { type: 'error', name: 'InvalidPayer',         inputs: [{ name: 'payer', type: 'address' }] },
-  { type: 'error', name: 'DescriptionRequired',  inputs: [] },
-  { type: 'error', name: 'NotAMember',           inputs: [] },
-  {
-    type: 'function',
-    name: 'settle',
-    stateMutability: 'nonpayable',
-    inputs: [],
-    outputs: [],
-  },
-  { type: 'error', name: 'AlreadySettled', inputs: [] },
-  { type: 'error', name: 'NotDebtor',      inputs: [] },
-  {
-    type: 'function',
-    name: 'editExpense',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'expenseId',      type: 'uint256' },
-      { name: 'newPayer',       type: 'address' },
-      { name: 'newAmount',      type: 'uint256' },
-      { name: 'newDescription', type: 'string'  },
-    ],
-    outputs: [],
-  },
-  {
-    type: 'function',
-    name: 'deleteExpense',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'expenseId', type: 'uint256' }],
-    outputs: [],
-  },
-  { type: 'error', name: 'ExpenseDoesNotExist', inputs: [{ name: 'expenseId', type: 'uint256' }] },
-  { type: 'error', name: 'ExpenseIsDeleted',    inputs: [{ name: 'expenseId', type: 'uint256' }] },
-] as const
 
 // Minimal USDC interface: allowance approval and balance check for the settle flow.
 export const usdcAbi = [

@@ -1,4 +1,4 @@
-import { getAddress, type Address } from 'viem'
+import { getAddress, getAbiItem, type Address } from 'viem'
 import { FACTORY_ADDRESS, FACTORY_DEPLOY_BLOCK, factoryAbi } from '../config'
 import { publicClient, collectInWindows } from './client'
 
@@ -18,7 +18,7 @@ export async function fetchMyGroups(smartAccount: Address): Promise<GroupItem[]>
     collectInWindows(FACTORY_DEPLOY_BLOCK, head, (from, to) =>
       publicClient.getLogs({
         address: FACTORY_ADDRESS,
-        event: factoryAbi[1],
+        event: getAbiItem({ abi: factoryAbi, name: 'GroupCreated' }),
         args: { memberA: smartAccount },
         fromBlock: from,
         toBlock: to,
@@ -27,7 +27,7 @@ export async function fetchMyGroups(smartAccount: Address): Promise<GroupItem[]>
     collectInWindows(FACTORY_DEPLOY_BLOCK, head, (from, to) =>
       publicClient.getLogs({
         address: FACTORY_ADDRESS,
-        event: factoryAbi[1],
+        event: getAbiItem({ abi: factoryAbi, name: 'GroupCreated' }),
         args: { memberB: smartAccount },
         fromBlock: from,
         toBlock: to,

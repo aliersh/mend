@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:abi": "node scripts/gen-abi.mjs"
   },
   "dependencies": {
     "@privy-io/react-auth": "^3.12.0",
