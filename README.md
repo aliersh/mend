@@ -27,10 +27,9 @@ Existing trackers like Splitwise get the tracking right, and many now link a pay
 ## How it works
 
 1. Two people deploy a Mend group together: one smart contract, one address, just for them.
-2. Each person does a one-time USDC approval, granting the contract permission to move up to a chosen amount from their wallet (e.g., 1,000 USDC).
-3. Either person can record a shared expense at any time. The contract updates a single net balance. No money moves yet.
-4. Expenses can be edited or deleted. The contract recomputes the balance accordingly. A full audit trail is preserved on-chain.
-5. When the debtor wants to settle up, they call `settle()`. The contract pulls the owed amount from the debtor's wallet to the creditor's wallet in a single transaction, and resets the balance to zero.
+2. Either person can record a shared expense at any time. The contract updates a single net balance. No money moves yet.
+3. Expenses can be edited or deleted. The contract recomputes the balance accordingly. A full audit trail is preserved on-chain.
+4. When the debtor wants to settle up, they call `settle()`. A single transaction approves exactly the amount owed and moves it from the debtor's wallet to the creditor's wallet, then resets the balance to zero — no standing allowance, and the contract never holds funds.
 
 ## Getting started
 
@@ -51,6 +50,7 @@ Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. 
 - [`docs/design.md`](docs/design.md): the design and the reasoning behind it
 - [`docs/contract-spec.md`](docs/contract-spec.md): the contract's function-by-function specification
 - [`docs/app-spec.md`](docs/app-spec.md): the web app specification (flows and integration)
+- [`docs/subgraph-spec.md`](docs/subgraph-spec.md): the indexer (The Graph subgraph) specification
 
 ## Security
 
