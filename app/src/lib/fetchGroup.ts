@@ -1,10 +1,7 @@
-import { formatUnits, getAbiItem, getAddress, type Address } from 'viem'
+import { formatUnits, getAddress, type Address } from 'viem'
 import { groupAbi } from '../config'
-import { publicClient, collectInWindows } from './client'
-
-const abiExpenseAdded   = getAbiItem({ abi: groupAbi, name: 'ExpenseAdded' })
-const abiExpenseEdited  = getAbiItem({ abi: groupAbi, name: 'ExpenseEdited' })
-const abiExpenseDeleted = getAbiItem({ abi: groupAbi, name: 'ExpenseDeleted' })
+import { publicClient } from './client'
+import { querySubgraph } from './subgraph'
 
 export type ExpenseEntry = {
   id: bigint
@@ -20,23 +17,6 @@ export type BalanceDisplay = {
   amount: string
 }
 
-// Single-window fetchers — also the source of the log types below.
-function addedWindow(address: Address, from: bigint, to: bigint) {
-  return publicClient.getLogs({ address, event: abiExpenseAdded, fromBlock: from, toBlock: to })
-}
-function editedWindow(address: Address, from: bigint, to: bigint) {
-  return publicClient.getLogs({ address, event: abiExpenseEdited, fromBlock: from, toBlock: to })
-}
-function deletedWindow(address: Address, from: bigint, to: bigint) {
-  return publicClient.getLogs({ address, event: abiExpenseDeleted, fromBlock: from, toBlock: to })
-}
-
-type ExpenseHistoryLogs = {
-  added: Awaited<ReturnType<typeof addedWindow>>
-  edited: Awaited<ReturnType<typeof editedWindow>>
-  deleted: Awaited<ReturnType<typeof deletedWindow>>
-}
-
 export async function fetchBalance(groupAddress: Address): Promise<bigint> {
   return publicClient.readContract({
     address: groupAddress,
@@ -45,48 +25,45 @@ export async function fetchBalance(groupAddress: Address): Promise<bigint> {
   })
 }
 
-export async function fetchExpenseHistory(
-  groupAddress: Address,
-  fromBlock: bigint,
-): Promise<ExpenseHistoryLogs> {
-  const head = await publicClient.getBlockNumber()
-  const [added, edited, deleted] = await Promise.all([
-    collectInWindows(fromBlock, head, (from, to) => addedWindow(groupAddress, from, to)),
-    collectInWindows(fromBlock, head, (from, to) => editedWindow(groupAddress, from, to)),
-    collectInWindows(fromBlock, head, (from, to) => deletedWindow(groupAddress, from, to)),
-  ])
-  return { added, edited, deleted }
-}
-
-export function reconstructExpenses(logs: ExpenseHistoryLogs): ExpenseEntry[] {
-  const map = new Map<bigint, ExpenseEntry>()
-
-  for (const log of logs.added) {
-    const { expenseId, payer, amount, description, createdAt } = log.args
-    map.set(expenseId!, {
-      id: expenseId!,
-      payer: payer!,
-      amount: amount!,
-      description: description!,
-      createdAt: Number(createdAt!),
-      deleted: false,
-    })
-  }
-
-  for (const log of logs.edited) {
-    const { expenseId, payer, amount, description } = log.args
-    const entry = map.get(expenseId!)
-    if (entry) {
-      map.set(expenseId!, { ...entry, payer: payer!, amount: amount!, description: description! })
+const EXPENSES_QUERY = `
+  query Expenses($group: ID!) {
+    group(id: $group) {
+      expenses(orderBy: expenseId, orderDirection: asc) {
+        expenseId
+        payer
+        amount
+        description
+        createdAt
+        deleted
+      }
     }
   }
+`
 
-  for (const log of logs.deleted) {
-    const entry = map.get(log.args.expenseId!)
-    if (entry) map.set(log.args.expenseId!, { ...entry, deleted: true })
-  }
+type SubgraphExpense = {
+  expenseId: string
+  payer: string
+  amount: string
+  description: string
+  createdAt: string
+  deleted: boolean
+}
 
-  return [...map.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+export async function fetchExpenseHistory(groupAddress: Address): Promise<ExpenseEntry[]> {
+  // Lowercase: Group.id is stored as toHexString() (lowercase) in the subgraph.
+  const group = groupAddress.toLowerCase()
+  const data = await querySubgraph<{ group: { expenses: SubgraphExpense[] } | null }>(
+    EXPENSES_QUERY,
+    { group },
+  )
+  return (data.group?.expenses ?? []).map((e) => ({
+    id: BigInt(e.expenseId),
+    payer: getAddress(e.payer),
+    amount: BigInt(e.amount),
+    description: e.description,
+    createdAt: Number(e.createdAt),
+    deleted: e.deleted,
+  }))
 }
 
 export async function fetchGroupMembers(

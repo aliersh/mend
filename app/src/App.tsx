@@ -10,6 +10,8 @@ import { GroupDetail } from './components/GroupDetail'
 import { fetchMyGroups } from './lib/fetchGroups'
 import type { GroupItem } from './lib/fetchGroups'
 import { submitCreateGroup, fetchGroupAddress } from './lib/createGroup'
+import { publicClient } from './lib/client'
+import { waitForSubgraphBlock } from './lib/subgraph'
 
 type SendUserOperation = (req: { to: Address; data: Hex }) => Promise<Hex>
 
@@ -71,17 +73,15 @@ export function App() {
     }
   }
 
-  // Polls fetchMyGroups until expectedAddress appears or 4 attempts are exhausted.
-  // Always commits each fetch result so the list stays fresh during the wait.
-  async function loadGroupsUntilNew(account: Address, expectedAddress: Address) {
+  // Waits for the subgraph to index at least the chain head at call time, then
+  // fetches the full groups list once. The _meta gate guarantees the new group
+  // is visible without polling for a specific address.
+  async function loadGroupsUntilNew(account: Address, _expectedAddress: Address) {
     setLoadingGroups(true)
     try {
-      for (let i = 0; i < 4; i++) {
-        if (i > 0) await new Promise((r) => setTimeout(r, 500))
-        const fetched = await fetchMyGroups(account)
-        setGroups(fetched)
-        if (fetched.some((g) => getAddress(g.address) === getAddress(expectedAddress))) break
-      }
+      const target = await publicClient.getBlockNumber()
+      await waitForSubgraphBlock(target)
+      setGroups(await fetchMyGroups(account))
     } finally {
       setLoadingGroups(false)
       setGroupsInitialized(true)
