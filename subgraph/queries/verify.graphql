@@ -1,0 +1,33 @@
+# Post-deploy verification query.
+# Test account: 0xc58731F8ed3F16d42C87E68573D03F369a526610
+# Expected group id: 0x6888af5c90f8c735cbe61cca743e31e93a5544e3
+# Note: Bytes comparison is case-sensitive — pass lowercase hex addresses.
+
+{
+  groups(where: {
+    or: [
+      { memberA: "0xc58731f8ed3f16d42c87e68573d03f369a526610" }
+      { memberB: "0xc58731f8ed3f16d42c87e68573d03f369a526610" }
+    ]
+  }) {
+    id
+    memberA
+    memberB
+    expenses(orderBy: expenseId, orderDirection: asc) {
+      id
+      expenseId
+      payer
+      amount
+      description
+      deleted
+      edited
+      createdAt
+    }
+    settlements(orderBy: timestamp, orderDirection: asc) {
+      payer
+      payee
+      amount
+      timestamp
+    }
+  }
+}

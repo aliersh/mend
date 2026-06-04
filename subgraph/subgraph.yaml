@@ -1,0 +1,50 @@
+specVersion: 1.3.0
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: MendFactory
+    network: base-sepolia
+    source:
+      address: '0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da'
+      abi: MendFactory
+      startBlock: 42151193
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Group
+      abis:
+        - name: MendFactory
+          file: ../contracts/out/MendFactory.sol/MendFactory.json
+      eventHandlers:
+        - event: GroupCreated(indexed address,indexed address,indexed address)
+          handler: handleGroupCreated
+      file: ./src/factory.ts
+templates:
+  - kind: ethereum/contract
+    name: MendGroup
+    network: base-sepolia
+    source:
+      abi: MendGroup
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Expense
+        - Settlement
+      abis:
+        - name: MendGroup
+          file: ../contracts/out/MendGroup.sol/MendGroup.json
+      eventHandlers:
+        - event: ExpenseAdded(indexed uint256,indexed address,uint256,string,uint64)
+          handler: handleExpenseAdded
+        - event: ExpenseEdited(indexed uint256,indexed address,uint256,string)
+          handler: handleExpenseEdited
+        - event: ExpenseDeleted(indexed uint256,indexed address)
+          handler: handleExpenseDeleted
+        - event: Settled(indexed address,indexed address,uint256)
+          handler: handleSettled
+      file: ./src/group.ts

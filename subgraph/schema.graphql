@@ -1,0 +1,33 @@
+type Group @entity(immutable: false) {
+  id: ID!
+  memberA: Bytes!
+  memberB: Bytes!
+  createdAt: BigInt!
+  createdBlock: BigInt!
+  expenses: [Expense!]! @derivedFrom(field: "group")
+  settlements: [Settlement!]! @derivedFrom(field: "group")
+}
+
+type Expense @entity(immutable: false) {
+  id: ID!
+  group: Group!
+  expenseId: BigInt!
+  payer: Bytes!
+  amount: BigInt!
+  description: String!
+  # createdAt comes from the ExpenseAdded event param (uint64), not the block timestamp —
+  # the contract preserves the original creation time through edits.
+  createdAt: BigInt!
+  deleted: Boolean!
+  edited: Boolean!
+}
+
+# Settlements are never mutated after creation.
+type Settlement @entity(immutable: true) {
+  id: ID!
+  group: Group!
+  payer: Bytes!
+  payee: Bytes!
+  amount: BigInt!
+  timestamp: BigInt!
+}
