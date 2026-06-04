@@ -24,18 +24,24 @@ type Props = {
   sendBatch: SendBatch | undefined
 }
 
-// Returns raw fetched values without committing state -- used by both loadDetail
-// and pollUntilChanged so the fetch logic lives in one place.
+// Fetches all three reads concurrently, committing whichever succeed.
+// Uses allSettled so one failing read (e.g. subgraph overload) never blanks
+// the others. anyFailed=true means callers should retry or show an error.
 async function fetchDetail(
   groupAddress: Parameters<typeof fetchBalance>[0],
   smartAccount: Parameters<typeof fetchUsdcBalance>[0],
 ) {
-  const [bal, expenses, usdc] = await Promise.all([
+  const [balR, expR, usdcR] = await Promise.allSettled([
     fetchBalance(groupAddress),
     fetchExpenseHistory(groupAddress),
     fetchUsdcBalance(smartAccount),
   ])
-  return { bal, expenses, usdc }
+  return {
+    bal:      balR.status  === 'fulfilled' ? balR.value  : null,
+    expenses: expR.status  === 'fulfilled' ? expR.value  : null,
+    usdc:     usdcR.status === 'fulfilled' ? usdcR.value : null,
+    anyFailed: [balR, expR, usdcR].some((r) => r.status === 'rejected'),
+  }
 }
 
 export function GroupDetail({ address, smartAccount, send, sendBatch }: Props) {
@@ -54,6 +60,7 @@ export function GroupDetail({ address, smartAccount, send, sendBatch }: Props) {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [usdcBalance, setUsdcBalance] = useState<bigint | null>(null)
+  const [postWriteStatus, setPostWriteStatus] = useState<string | null>(null)
 
   async function loadDetail(opts?: { silent?: boolean }) {
     if (!resolvedGroup) return
@@ -64,33 +71,63 @@ export function GroupDetail({ address, smartAccount, send, sendBatch }: Props) {
       setUsdcBalance(null)
       setLoadingDetail(true)
     }
+    const { bal, expenses, usdc, anyFailed } = await fetchDetail(resolvedGroup.address, smartAccount)
+    if (bal !== null) setBalance(bal)
+    if (expenses !== null) setExpenses(expenses)
+    if (usdc !== null) setUsdcBalance(usdc)
+    if (anyFailed) setDetailError('Failed to load some data — try refreshing')
+    if (!opts?.silent) setLoadingDetail(false)
+  }
+
+  // Attempts one full refresh cycle. Returns true on complete success (all reads
+  // fulfilled), false on any failure. Never throws, never touches detailError.
+  async function attemptRefresh(): Promise<boolean> {
+    if (!resolvedGroup) return false
     try {
-      const { bal, expenses, usdc } = await fetchDetail(resolvedGroup.address, smartAccount)
-      setBalance(bal)
-      setExpenses(expenses)
-      setUsdcBalance(usdc)
-    } catch (e) {
-      setDetailError(e instanceof Error ? e.message : String(e))
-    } finally {
-      if (!opts?.silent) setLoadingDetail(false)
+      const target = await publicClient.getBlockNumber()
+      await waitForSubgraphBlock(target)
+      const { bal, expenses, usdc, anyFailed } = await fetchDetail(resolvedGroup.address, smartAccount)
+      if (bal !== null) setBalance(bal)
+      if (expenses !== null) setExpenses(expenses)
+      if (usdc !== null) setUsdcBalance(usdc)
+      if (!anyFailed) {
+        setDetailError(null)
+        return true
+      }
+      return false
+    } catch {
+      return false
     }
+  }
+
+  // Retries attemptRefresh with increasing delays after the first attempt failed.
+  // Not awaited by callers — runs detached so forms can resolve immediately.
+  // On success clears postWriteStatus. On exhaust keeps a persistent reassurance
+  // so a blank list never looks like a failed write.
+  async function backgroundRetry() {
+    for (const delay of [3000, 6000, 12000]) {
+      await new Promise<void>((r) => setTimeout(r, delay))
+      if (await attemptRefresh()) {
+        setPostWriteStatus(null)
+        return
+      }
+    }
+    setPostWriteStatus("Confirmed on-chain — couldn't refresh the list, reload to see the latest.")
   }
 
   // Waits for the subgraph to index at least the chain head at call time, then
   // fetches fresh state in one shot. The _meta gate replaces the old snapshot-diff
   // poll — freshness is guaranteed by block number, not by diffing prior state.
+  // First attempt is awaited (so write forms resolve and revert promptly on the
+  // happy path); any retries run in the background.
   async function pollUntilChanged() {
     if (!resolvedGroup) return
-    const target = await publicClient.getBlockNumber()
-    await waitForSubgraphBlock(target)
-    try {
-      const { bal, expenses, usdc } = await fetchDetail(resolvedGroup.address, smartAccount)
-      setBalance(bal)
-      setExpenses(expenses)
-      setUsdcBalance(usdc)
-    } catch (e) {
-      setDetailError(e instanceof Error ? e.message : String(e))
+    setPostWriteStatus('Confirmed on-chain — refreshing…')
+    if (await attemptRefresh()) {
+      setPostWriteStatus(null)
+      return
     }
+    void backgroundRetry()
   }
 
   // Cold-load bootstrap: fetches memberA/memberB from the group contract when
@@ -152,6 +189,7 @@ export function GroupDetail({ address, smartAccount, send, sendBatch }: Props) {
       <h3>Balance</h3>
       {loadingDetail && <p>Loading…</p>}
       {detailError && <p style={{ color: 'crimson' }}>Error: {detailError}</p>}
+      {postWriteStatus && <p style={{ color: 'grey' }}>{postWriteStatus}</p>}
       {display && (
         <p>
           {display.direction === 'settled' && 'Settled'}
