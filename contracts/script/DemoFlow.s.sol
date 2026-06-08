@@ -5,14 +5,14 @@ import {Script, console} from "forge-std/Script.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {MendFactory} from "../src/MendFactory.sol";
-import {MendGroup} from "../src/MendGroup.sol";
+import {PontiFactory} from "../src/PontiFactory.sol";
+import {PontiGroup} from "../src/PontiGroup.sol";
 
-/// @notice End-to-end simulation of the Mend M1 system on a forked Optimism Sepolia.
+/// @notice End-to-end simulation of the Ponti M1 system on a forked Optimism Sepolia.
 ///         Never broadcasts — the `console` output is the demo.
 ///         Invocation: `forge script script/DemoFlow.s.sol -vv` (with `.env` present).
 contract DemoFlow is Script, StdCheats {
-    /// @notice Pinned to match `test/MendGroup.fork.t.sol`.
+    /// @notice Pinned to match `test/PontiGroup.fork.t.sol`.
     uint256 internal constant FORK_BLOCK = 42_329_000;
 
     /// @notice 1,000 USDC per member.
@@ -29,16 +29,16 @@ contract DemoFlow is Script, StdCheats {
         deal(usdc, alice, FUND_AMOUNT, true);
         deal(usdc, bob, FUND_AMOUNT, true);
 
-        console.log("=== Mend demo: alice & bob's shared expenses ===");
+        console.log("=== Ponti demo: alice & bob's shared expenses ===");
         console.log("");
 
-        MendFactory factory = new MendFactory(usdc);
-        console.log("MendFactory deployed at:", address(factory));
+        PontiFactory factory = new PontiFactory(usdc);
+        console.log("PontiFactory deployed at:", address(factory));
 
         vm.prank(alice);
         address groupAddr = factory.createGroup(bob);
-        MendGroup group = MendGroup(groupAddr);
-        console.log("MendGroup   deployed at:", groupAddr);
+        PontiGroup group = PontiGroup(groupAddr);
+        console.log("PontiGroup   deployed at:", groupAddr);
         console.log("");
 
         console.log(string.concat("alice starts with ", _fmtUsdc(IERC20(usdc).balanceOf(alice)), " USDC"));
@@ -79,7 +79,9 @@ contract DemoFlow is Script, StdCheats {
         _narrateSettlement(group, alice, bob, usdc, groupAddr);
     }
 
-    function _narrateSettlement(MendGroup group, address alice, address bob, address usdc, address groupAddr) internal {
+    function _narrateSettlement(PontiGroup group, address alice, address bob, address usdc, address groupAddr)
+        internal
+    {
         int256 b = group.balance();
         address debtor;
         address creditor;
@@ -111,7 +113,7 @@ contract DemoFlow is Script, StdCheats {
         console.log(_fmtDeltaLine(usdc, debtor, debtorName, debtorBefore));
         console.log(_fmtDeltaLine(usdc, creditor, creditorName, creditorBefore));
         console.log(
-            string.concat("MendGroup USDC balance: ", _fmtUsdc(IERC20(usdc).balanceOf(groupAddr)), " (non-custodial)")
+            string.concat("PontiGroup USDC balance: ", _fmtUsdc(IERC20(usdc).balanceOf(groupAddr)), " (non-custodial)")
         );
     }
 

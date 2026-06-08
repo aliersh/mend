@@ -14,7 +14,7 @@ app-dev:
 typecheck:
 	pnpm -C app typecheck
 
-SUBGRAPH_SLUG ?= mend
+SUBGRAPH_SLUG ?= ponti-base-sepolia
 
 # subgraph.yaml references contracts/out directly (graph-cli 0.98.1 unwraps Foundry artifacts).
 # forge build first so the artifacts are fresh.

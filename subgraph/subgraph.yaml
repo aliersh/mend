@@ -3,12 +3,12 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum/contract
-    name: MendFactory
+    name: PontiFactory
     network: base-sepolia
     source:
-      address: '0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da'
-      abi: MendFactory
-      startBlock: 42151193
+      address: '0x17463e06C303e30044609a9a412d7DB4746Cb210'
+      abi: PontiFactory
+      startBlock: 42590257
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -16,18 +16,18 @@ dataSources:
       entities:
         - Group
       abis:
-        - name: MendFactory
-          file: ../contracts/out/MendFactory.sol/MendFactory.json
+        - name: PontiFactory
+          file: ../contracts/out/PontiFactory.sol/PontiFactory.json
       eventHandlers:
         - event: GroupCreated(indexed address,indexed address,indexed address)
           handler: handleGroupCreated
       file: ./src/factory.ts
 templates:
   - kind: ethereum/contract
-    name: MendGroup
+    name: PontiGroup
     network: base-sepolia
     source:
-      abi: MendGroup
+      abi: PontiGroup
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -36,8 +36,8 @@ templates:
         - Expense
         - Settlement
       abis:
-        - name: MendGroup
-          file: ../contracts/out/MendGroup.sol/MendGroup.json
+        - name: PontiGroup
+          file: ../contracts/out/PontiGroup.sol/PontiGroup.json
       eventHandlers:
         - event: ExpenseAdded(indexed uint256,indexed address,uint256,string,uint64)
           handler: handleExpenseAdded

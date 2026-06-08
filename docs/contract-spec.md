@@ -1,4 +1,4 @@
-# Mend — Contract Specification
+# Ponti — Contract Specification
 
 **Status:** Implemented, tested, and deployed to Base Sepolia
 **Authoritative source for:** function signatures, storage layout, validation rules, events, errors
@@ -10,8 +10,8 @@
 
 This document specifies the public interface and internal behavior of two contracts:
 
-- `MendFactory` — deploys `MendGroup` instances.
-- `MendGroup` — a two-party IOU contract that tracks shared expenses and settles in USDC.
+- `PontiFactory` — deploys `PontiGroup` instances.
+- `PontiGroup` — a two-party IOU contract that tracks shared expenses and settles in USDC.
 
 Implementation-level decisions (helper function structure, internal naming, gas micro-optimizations, test organization) are NOT specified here; they are left to the implementer. Anything that would change the behavior documented below is an architectural change and must be reflected in this spec before being implemented.
 
@@ -25,7 +25,7 @@ All USDC amounts throughout the contracts are expressed in **base units** (6 dec
 
 ### 2.2 Balance directionality
 
-The `MendGroup` stores a single `int256 balance`. The sign convention is:
+The `PontiGroup` stores a single `int256 balance`. The sign convention is:
 
 - `balance > 0` → **memberB owes memberA**. memberB is the debtor, memberA is the creditor.
 - `balance < 0` → **memberA owes memberB**. memberA is the debtor, memberB is the creditor.
@@ -52,8 +52,8 @@ This section defines the trust boundary of the contracts (what they assume to be
 
 The contracts assume the following are true. If any of these is violated, the contracts' guarantees do not hold.
 
-- **aMG-001:** The USDC contract at the address provided to the factory implements ERC-20 correctly, including `transferFrom` semantics. Mend does not validate USDC's behavior.
-- **aMG-002:** The MendFactory validates its inputs before calling `new MendGroup(...)`. The MendGroup constructor performs equivalent checks as defense in depth, but the factory is the expected deployer.
+- **aMG-001:** The USDC contract at the address provided to the factory implements ERC-20 correctly, including `transferFrom` semantics. Ponti does not validate USDC's behavior.
+- **aMG-002:** The PontiFactory validates its inputs before calling `new PontiGroup(...)`. The PontiGroup constructor performs equivalent checks as defense in depth, but the factory is the expected deployer.
 - **aMG-003:** Members retain control of their wallets across the lifetime of the group. Lost-key recovery, wallet migration, and similar concerns are out of scope.
 - **aMG-004:** The deployment chain (Base Sepolia) is operational and finalizing blocks normally. Reorg behavior beyond standard L2 finality is out of scope.
 
@@ -64,7 +64,7 @@ The contracts guarantee the following properties at all times. Violations are bu
 #### Critical
 
 - **iMG-001 (Balance integrity):** At any moment, `balance` equals the sum of contributions from all non-deleted expenses, where each expense contributes `+amount/2` if `payer == memberA` and `-amount/2` if `payer == memberB`.
-- **iMG-002 (Non-custodial):** In normal operation, the MendGroup contract holds no USDC or other assets. All settlements route directly from debtor to creditor via `safeTransferFrom`. If funds are sent to the contract by mistake (an external violation of this property), they can be recovered via rescue functions — but the contract itself never initiates custody of funds.
+- **iMG-002 (Non-custodial):** In normal operation, the PontiGroup contract holds no USDC or other assets. All settlements route directly from debtor to creditor via `safeTransferFrom`. If funds are sent to the contract by mistake (an external violation of this property), they can be recovered via rescue functions — but the contract itself never initiates custody of funds.
 - **iMG-003 (Settle authorization):** When `balance != 0`, only the wallet identified as the debtor (per the sign convention in section 2.2) can successfully execute `settle()`.
 - **iMG-004 (Settle atomicity):** A successful `settle()` call sets `balance` to exactly `0` and transfers exactly `abs(balance_before)` USDC. There are no partial settlements.
 
@@ -81,7 +81,7 @@ The contracts guarantee the following properties at all times. Violations are bu
 
 ### 3.3 Factory invariants
 
-- **iMF-001 (Single USDC per factory):** All MendGroup instances deployed by a given MendFactory share the same `usdc` address, fixed at factory construction.
+- **iMF-001 (Single USDC per factory):** All PontiGroup instances deployed by a given PontiFactory share the same `usdc` address, fixed at factory construction.
 - **iMF-002 (Unrestricted deployment):** The factory imposes no policy on how many groups can exist between the same pair of members, beyond the input validation in `createGroup`.
 
 ---
@@ -112,7 +112,7 @@ Field semantics:
 
 **Field order is load-bearing.** Reordering this struct will silently break the packing and increase storage cost per expense by ~3 slots. If new fields are ever added, they must be placed either within the first slot (if they fit with the existing small fields) or after `description`. Never insert a field that doesn't fit in the current packed slot between `payer` and `amount`.
 
-## 5. `MendGroup` — state
+## 5. `PontiGroup` — state
 
 ### 5.1 Immutable state
 
@@ -138,7 +138,7 @@ uint256 public nextExpenseId;
 
 ---
 
-## 6. `MendGroup` — constructor
+## 6. `PontiGroup` — constructor
 
 ### Signature
 
@@ -158,11 +158,11 @@ constructor(address _memberA, address _memberB, address _usdc)
 
 ### Notes
 
-- `MendFactory` enforces equivalent checks before deploying; the duplication ensures `MendGroup` cannot be deployed in an invalid state through a non-standard deployment path.
+- `PontiFactory` enforces equivalent checks before deploying; the duplication ensures `PontiGroup` cannot be deployed in an invalid state through a non-standard deployment path.
 
 ---
 
-## 7. `MendGroup` — modifiers
+## 7. `PontiGroup` — modifiers
 
 ```solidity
 modifier onlyMember() {
@@ -175,7 +175,7 @@ Applied to `addExpense`, `editExpense`, `deleteExpense`. `settle` performs its d
 
 ---
 
-## 8. `MendGroup` — functions
+## 8. `PontiGroup` — functions
 
 ### 8.1 `addExpense`
 
@@ -408,7 +408,7 @@ function rescueERC20(address token, address to) external onlyMember
 
 ---
 
-## 9. `MendGroup` — events
+## 9. `PontiGroup` — events
 
 ```solidity
 event ExpenseAdded(
@@ -452,7 +452,7 @@ Notes:
 
 ---
 
-## 10. `MendGroup` — errors
+## 10. `PontiGroup` — errors
 
 ```solidity
 // Access control
@@ -486,7 +486,7 @@ Notes:
 
 ---
 
-## 11. `MendFactory` — state
+## 11. `PontiFactory` — state
 
 ```solidity
 address public immutable usdc;
@@ -496,7 +496,7 @@ No other state. The factory does not maintain a registry of deployed groups, doe
 
 ---
 
-## 12. `MendFactory` — constructor
+## 12. `PontiFactory` — constructor
 
 ### Signature
 
@@ -514,11 +514,11 @@ constructor(address _usdc)
 
 ### Notes
 
-- All `MendGroup`s deployed by a given factory share its `usdc` address.
+- All `PontiGroup`s deployed by a given factory share its `usdc` address.
 
 ---
 
-## 13. `MendFactory` — functions
+## 13. `PontiFactory` — functions
 
 ### 13.1 `createGroup`
 
@@ -535,12 +535,12 @@ function createGroup(address otherMember) external returns (address group)
 
 #### Effects
 
-1. Deploy a new `MendGroup` via `new MendGroup(msg.sender, otherMember, usdc)`.
+1. Deploy a new `PontiGroup` via `new PontiGroup(msg.sender, otherMember, usdc)`.
 2. Emit `GroupCreated(address(group), msg.sender, otherMember)`.
 
 #### Returns
 
-The address of the newly deployed `MendGroup`.
+The address of the newly deployed `PontiGroup`.
 
 #### Notes
 
@@ -548,7 +548,7 @@ The address of the newly deployed `MendGroup`.
 
 ---
 
-## 14. `MendFactory` — events and errors
+## 14. `PontiFactory` — events and errors
 
 ### 14.1 Events
 
@@ -578,9 +578,9 @@ error InvalidMemberAddress();
 
 ### 15.1 Test coverage targets
 
-- **Line coverage:** ≥ 90% on `MendGroup.sol`.
-- **Branch coverage:** ≥ 95% on `MendGroup.sol`; document any uncovered branch with rationale (e.g., unreachable in practice, dependent on third-party revert).
-- **Factory coverage:** ≥ 90% line coverage on `MendFactory.sol`; branch coverage expected to reach 100% given the factory's simplicity.
+- **Line coverage:** ≥ 90% on `PontiGroup.sol`.
+- **Branch coverage:** ≥ 95% on `PontiGroup.sol`; document any uncovered branch with rationale (e.g., unreachable in practice, dependent on third-party revert).
+- **Factory coverage:** ≥ 90% line coverage on `PontiFactory.sol`; branch coverage expected to reach 100% given the factory's simplicity.
 
 ### 15.2 Required test categories
 
@@ -604,7 +604,7 @@ No other dependencies. Resist the temptation to pull in additional libraries; M1
 
 ### 15.5 Deployment
 
-- `contracts/script/Deploy.s.sol`: deploys `MendFactory` to Base Sepolia using the canonical USDC address hardcoded per chain ID (`84532` → `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; other chains fall back to `USDC_ADDRESS` env var). Verifies the factory on Basescan. The deployed factory address is recorded in `README.md`.
+- `contracts/script/Deploy.s.sol`: deploys `PontiFactory` to Base Sepolia using the canonical USDC address hardcoded per chain ID (`84532` → `0x036CbD53842c5426634e7929541eC2318f3dCF7e`; other chains fall back to `USDC_ADDRESS` env var). Verifies the factory on Basescan. The deployed factory address is recorded in `README.md`.
 - `contracts/script/DemoFlow.s.sol`: end-to-end demonstration script. Deploys the factory, creates a group, performs USDC approvals, adds expenses, edits one, deletes one, and settles. Used as the canonical executable proof that the system works.
 
 ---
@@ -614,7 +614,7 @@ No other dependencies. Resist the temptation to pull in additional libraries; M1
 The following are intentionally NOT part of M1 and are listed here to prevent scope creep during implementation:
 
 - **Pausability.** The contract cannot be paused. There is no admin role.
-- **Upgradeability.** No proxy pattern. A deployed `MendGroup` runs the code it was deployed with, forever.
+- **Upgradeability.** No proxy pattern. A deployed `PontiGroup` runs the code it was deployed with, forever.
 - **Fee collection.** No protocol fees on settlement.
 - **Group closing / archiving.** A group has no concept of being "closed". It simply stops being used. The state remains accessible and auditable forever.
 - **Member removal or substitution.** Not supported; members are `immutable`.

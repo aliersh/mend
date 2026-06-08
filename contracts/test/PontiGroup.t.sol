@@ -6,7 +6,7 @@ import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import {MendGroup} from "../src/MendGroup.sol";
+import {PontiGroup} from "../src/PontiGroup.sol";
 import {ReentrantToken} from "./mocks/ReentrantToken.sol";
 
 /// @notice Reverts on `receive()` to force `ETHTransferFailed`.
@@ -16,7 +16,7 @@ contract ETHRejector {
     }
 }
 
-contract MendGroupTest is Test {
+contract PontiGroupTest is Test {
     // For vm.expectEmit topic matching.
     event ExpenseAdded(
         uint256 indexed expenseId, address indexed payer, uint256 amount, string description, uint64 createdAt
@@ -28,7 +28,7 @@ contract MendGroupTest is Test {
     event ERC20Rescued(address indexed token, address indexed to, uint256 amount);
 
     ERC20Mock internal usdc;
-    MendGroup internal group;
+    PontiGroup internal group;
 
     address internal memberA;
     address internal memberB;
@@ -42,7 +42,7 @@ contract MendGroupTest is Test {
         memberB = makeAddr("memberB");
         stranger = makeAddr("stranger");
 
-        group = new MendGroup(memberA, memberB, address(usdc));
+        group = new PontiGroup(memberA, memberB, address(usdc));
 
         usdc.mint(memberA, MINT);
         usdc.mint(memberB, MINT);
@@ -53,23 +53,23 @@ contract MendGroupTest is Test {
     // ---------------------------------------------------------------------
 
     function test_Constructor_RevertsOnZeroMemberA() public {
-        vm.expectRevert(MendGroup.InvalidMemberAddress.selector);
-        new MendGroup(address(0), memberB, address(usdc));
+        vm.expectRevert(PontiGroup.InvalidMemberAddress.selector);
+        new PontiGroup(address(0), memberB, address(usdc));
     }
 
     function test_Constructor_RevertsOnZeroMemberB() public {
-        vm.expectRevert(MendGroup.InvalidMemberAddress.selector);
-        new MendGroup(memberA, address(0), address(usdc));
+        vm.expectRevert(PontiGroup.InvalidMemberAddress.selector);
+        new PontiGroup(memberA, address(0), address(usdc));
     }
 
     function test_Constructor_RevertsOnSameMembers() public {
-        vm.expectRevert(MendGroup.CannotGroupWithSelf.selector);
-        new MendGroup(memberA, memberA, address(usdc));
+        vm.expectRevert(PontiGroup.CannotGroupWithSelf.selector);
+        new PontiGroup(memberA, memberA, address(usdc));
     }
 
     function test_Constructor_RevertsOnZeroUsdc() public {
-        vm.expectRevert(MendGroup.InvalidUsdcAddress.selector);
-        new MendGroup(memberA, memberB, address(0));
+        vm.expectRevert(PontiGroup.InvalidUsdcAddress.selector);
+        new PontiGroup(memberA, memberB, address(0));
     }
 
     function test_Constructor_SetsImmutables() public view {
@@ -86,25 +86,25 @@ contract MendGroupTest is Test {
 
     function test_AddExpense_RevertsIfNotMember() public {
         vm.prank(stranger);
-        vm.expectRevert(MendGroup.NotAMember.selector);
+        vm.expectRevert(PontiGroup.NotAMember.selector);
         group.addExpense(memberA, 100, "groceries");
     }
 
     function test_AddExpense_RevertsOnZeroAmount() public {
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.AmountMustBePositive.selector);
+        vm.expectRevert(PontiGroup.AmountMustBePositive.selector);
         group.addExpense(memberA, 0, "groceries");
     }
 
     function test_AddExpense_RevertsOnInvalidPayer() public {
         vm.prank(memberA);
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.InvalidPayer.selector, stranger));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.InvalidPayer.selector, stranger));
         group.addExpense(stranger, 100, "groceries");
     }
 
     function test_AddExpense_RevertsOnEmptyDescription() public {
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.DescriptionRequired.selector);
+        vm.expectRevert(PontiGroup.DescriptionRequired.selector);
         group.addExpense(memberA, 100, "");
     }
 
@@ -114,7 +114,7 @@ contract MendGroupTest is Test {
         uint256 id = group.addExpense(memberA, 100, "groceries");
         assertEq(id, 0);
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.payer, memberA);
         assertEq(e.amount, 100);
         assertEq(e.description, "groceries");
@@ -192,14 +192,14 @@ contract MendGroupTest is Test {
     function test_EditExpense_RevertsIfNotMember() public {
         uint256 id = _seed(memberA, 100);
         vm.prank(stranger);
-        vm.expectRevert(MendGroup.NotAMember.selector);
+        vm.expectRevert(PontiGroup.NotAMember.selector);
         group.editExpense(id, memberB, 50, "new");
     }
 
     function test_EditExpense_RevertsOnNonexistentId() public {
         uint256 missing = group.nextExpenseId();
         vm.prank(memberA);
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.ExpenseDoesNotExist.selector, missing));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.ExpenseDoesNotExist.selector, missing));
         group.editExpense(missing, memberA, 50, "new");
     }
 
@@ -209,28 +209,28 @@ contract MendGroupTest is Test {
         group.deleteExpense(id);
 
         vm.prank(memberA);
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.ExpenseIsDeleted.selector, id));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.ExpenseIsDeleted.selector, id));
         group.editExpense(id, memberA, 50, "new");
     }
 
     function test_EditExpense_RevertsOnZeroAmount() public {
         uint256 id = _seed(memberA, 100);
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.AmountMustBePositive.selector);
+        vm.expectRevert(PontiGroup.AmountMustBePositive.selector);
         group.editExpense(id, memberA, 0, "new");
     }
 
     function test_EditExpense_RevertsOnInvalidPayer() public {
         uint256 id = _seed(memberA, 100);
         vm.prank(memberA);
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.InvalidPayer.selector, stranger));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.InvalidPayer.selector, stranger));
         group.editExpense(id, stranger, 50, "new");
     }
 
     function test_EditExpense_RevertsOnEmptyDescription() public {
         uint256 id = _seed(memberA, 100);
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.DescriptionRequired.selector);
+        vm.expectRevert(PontiGroup.DescriptionRequired.selector);
         group.editExpense(id, memberA, 50, "");
     }
 
@@ -242,7 +242,7 @@ contract MendGroupTest is Test {
         vm.prank(memberA);
         group.editExpense(id, memberB, 200, "updated");
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.createdAt, 1_700_000_000);
     }
 
@@ -265,7 +265,7 @@ contract MendGroupTest is Test {
         vm.prank(memberA);
         group.editExpense(id, memberA, 100, "replaced");
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.description, "replaced");
     }
 
@@ -285,14 +285,14 @@ contract MendGroupTest is Test {
     function test_DeleteExpense_RevertsIfNotMember() public {
         uint256 id = _seed(memberA, 100);
         vm.prank(stranger);
-        vm.expectRevert(MendGroup.NotAMember.selector);
+        vm.expectRevert(PontiGroup.NotAMember.selector);
         group.deleteExpense(id);
     }
 
     function test_DeleteExpense_RevertsOnNonexistentId() public {
         uint256 missing = group.nextExpenseId();
         vm.prank(memberA);
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.ExpenseDoesNotExist.selector, missing));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.ExpenseDoesNotExist.selector, missing));
         group.deleteExpense(missing);
     }
 
@@ -302,7 +302,7 @@ contract MendGroupTest is Test {
         group.deleteExpense(id);
 
         vm.prank(memberA);
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.ExpenseIsDeleted.selector, id));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.ExpenseIsDeleted.selector, id));
         group.deleteExpense(id);
     }
 
@@ -311,7 +311,7 @@ contract MendGroupTest is Test {
         vm.prank(memberA);
         group.deleteExpense(id);
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.deleted, true);
     }
 
@@ -323,7 +323,7 @@ contract MendGroupTest is Test {
         vm.prank(memberB);
         group.deleteExpense(id);
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.payer, memberA);
         assertEq(e.amount, 100);
         assertEq(e.description, "seed");
@@ -354,28 +354,28 @@ contract MendGroupTest is Test {
     /// Reminder: payer=memberA, amount=100 → balance=+50 → B owes A → B is debtor.
     function test_Settle_RevertsIfAlreadySettled() public {
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.AlreadySettled.selector);
+        vm.expectRevert(PontiGroup.AlreadySettled.selector);
         group.settle();
     }
 
     function test_Settle_RevertsIfNotDebtor_BalancePositive() public {
         _seed(memberA, 100); // balance +50, debtor = memberB
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.NotDebtor.selector);
+        vm.expectRevert(PontiGroup.NotDebtor.selector);
         group.settle();
     }
 
     function test_Settle_RevertsIfNotDebtor_BalanceNegative() public {
         _seed(memberB, 100); // balance -50, debtor = memberA
         vm.prank(memberB);
-        vm.expectRevert(MendGroup.NotDebtor.selector);
+        vm.expectRevert(PontiGroup.NotDebtor.selector);
         group.settle();
     }
 
     function test_Settle_RevertsIfStrangerCalls() public {
         _seed(memberA, 100);
         vm.prank(stranger);
-        vm.expectRevert(MendGroup.NotDebtor.selector);
+        vm.expectRevert(PontiGroup.NotDebtor.selector);
         group.settle();
     }
 
@@ -453,7 +453,7 @@ contract MendGroupTest is Test {
     function test_Settle_RejectsReentrancy() public {
         // Deploy a fresh group backed by a token that reenters settle() on transferFrom.
         ReentrantToken evil = new ReentrantToken();
-        MendGroup evilGroup = new MendGroup(memberA, memberB, address(evil));
+        PontiGroup evilGroup = new PontiGroup(memberA, memberB, address(evil));
 
         vm.prank(memberA);
         evilGroup.addExpense(memberA, 100, "bait"); // balance = +50, debtor = memberB
@@ -469,7 +469,7 @@ contract MendGroupTest is Test {
 
     function test_GetExpense_RevertsOnNonexistent() public {
         uint256 missing = group.nextExpenseId();
-        vm.expectRevert(abi.encodeWithSelector(MendGroup.ExpenseDoesNotExist.selector, missing));
+        vm.expectRevert(abi.encodeWithSelector(PontiGroup.ExpenseDoesNotExist.selector, missing));
         group.getExpense(missing);
     }
 
@@ -477,7 +477,7 @@ contract MendGroupTest is Test {
         vm.warp(1_700_000_000);
         uint256 id = _seed(memberA, 123);
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.payer, memberA);
         assertEq(e.amount, 123);
         assertEq(e.description, "seed");
@@ -490,7 +490,7 @@ contract MendGroupTest is Test {
         vm.prank(memberA);
         group.deleteExpense(id);
 
-        MendGroup.Expense memory e = group.getExpense(id);
+        PontiGroup.Expense memory e = group.getExpense(id);
         assertEq(e.deleted, true);
         assertEq(e.payer, memberA);
         assertEq(e.amount, 100);
@@ -502,7 +502,7 @@ contract MendGroupTest is Test {
 
     function test_RescueETH_RevertsIfNotMember() public {
         vm.prank(stranger);
-        vm.expectRevert(MendGroup.NotAMember.selector);
+        vm.expectRevert(PontiGroup.NotAMember.selector);
         group.rescueETH(memberA);
     }
 
@@ -530,7 +530,7 @@ contract MendGroupTest is Test {
         ETHRejector rejector = new ETHRejector();
 
         vm.prank(memberA);
-        vm.expectRevert(MendGroup.ETHTransferFailed.selector);
+        vm.expectRevert(PontiGroup.ETHTransferFailed.selector);
         group.rescueETH(address(rejector));
     }
 
@@ -549,7 +549,7 @@ contract MendGroupTest is Test {
 
     function test_RescueERC20_RevertsIfNotMember() public {
         vm.prank(stranger);
-        vm.expectRevert(MendGroup.NotAMember.selector);
+        vm.expectRevert(PontiGroup.NotAMember.selector);
         group.rescueERC20(address(usdc), memberA);
     }
 
@@ -624,7 +624,7 @@ contract MendGroupTest is Test {
     function _expectedBalance() internal view returns (int256 expected) {
         uint256 n = group.nextExpenseId();
         for (uint256 i = 0; i < n; i++) {
-            MendGroup.Expense memory e = group.getExpense(i);
+            PontiGroup.Expense memory e = group.getExpense(i);
             if (e.deleted) continue;
             int256 half = int256(e.amount / 2);
             expected += (e.payer == memberA) ? half : -half;

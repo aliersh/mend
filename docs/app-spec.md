@@ -1,4 +1,4 @@
-# Mend — Application Spec
+# Ponti — Application Spec
 
 **Status:** In development. Covers onboarding, group creation, expense entry (add, edit, delete), reads, and settlement. This document grows as more of the app is built.
 **Companions:** [`design.md`](design.md) (the *why*), [`contract-spec.md`](contract-spec.md) (the contract interface).
@@ -22,9 +22,9 @@ Not yet built (added here as they land):
 
 ## Stack and layout
 
-- Frontend lives in `app/` within the mend monorepo: Vite + React SPA.
+- Frontend lives in `app/` within the ponti monorepo: Vite + React SPA.
 - Auth + embedded wallet: **Privy**. Smart account: **Kernel** (ZeroDev), via Privy. Bundler + paymaster: **Pimlico**. Contract reads/writes: **viem**.
-- Target chain: **Base Sepolia** (chain id 84532). Factory: `0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da`. USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
+- Target chain: **Base Sepolia** (chain id 84532). Factory: `0x17463e06C303e30044609a9a412d7DB4746Cb210`. USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`.
 - Config via Vite env vars (`VITE_`-prefixed, client-side). No backend, no server secrets.
 
 ## Flows
@@ -33,7 +33,7 @@ Writes go through the account-abstraction stack (UserOperation → Pimlico payma
 
 ### 1. Onboarding / login
 
-The user logs in with email or social (Privy), which provisions a Kernel smart account. That smart account's address is the user's identity in Mend (it is what gets registered as a group member). The account is counterfactual until its first write, which deploys it — sponsored, so onboarding costs the user nothing.
+The user logs in with email or social (Privy), which provisions a Kernel smart account. That smart account's address is the user's identity in Ponti (it is what gets registered as a group member). The account is counterfactual until its first write, which deploys it — sponsored, so onboarding costs the user nothing.
 
 ### 2. Groups list (home)
 
@@ -61,9 +61,9 @@ Read-only. Show the current `balance` (direct call) and the expense history (rec
 
 - Shown in group detail only when `balance != 0` and the user is the debtor (per the sign convention). `settle()` is debtor-only on-chain, so the creditor sees no Settle action.
 - Pre-checks before enabling the action: the user is the debtor, and their smart account's USDC balance covers the debt. If the balance is short, surface the amount needed and the Circle Base Sepolia faucet (testnet funding is manual; a real onramp is out of scope, see `design.md`).
-- Write flow (both gasless): approve the **exact** amount owed to the `MendGroup` contract, then call `settle()`. No standing budget; the allowance returns to zero once settle consumes it.
+- Write flow (both gasless): approve the **exact** amount owed to the `PontiGroup` contract, then call `settle()`. No standing budget; the allowance returns to zero once settle consumes it.
 - On success, the balance is zero (settled) and USDC has moved debtor to creditor; refresh the balance.
-- Both writes are sponsored: the paymaster policy covers the approve to the USDC contract as well as the `MendGroup` call (confirmed on Base Sepolia).
+- Both writes are sponsored: the paymaster policy covers the approve to the USDC contract as well as the `PontiGroup` call (confirmed on Base Sepolia).
 
 ## Reads and state
 

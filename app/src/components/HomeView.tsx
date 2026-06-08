@@ -46,7 +46,7 @@ export function HomeView({
 
   return (
     <main style={page}>
-      <h1>Mend</h1>
+      <h1>Ponti</h1>
       <p>
         Smart account: <code>{smartAccount ?? 'provisioning…'}</code>{' '}
         <button onClick={logout}>Log out</button>

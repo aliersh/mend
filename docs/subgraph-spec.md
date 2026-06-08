@@ -1,6 +1,6 @@
-# Mend — Subgraph Spec
+# Ponti — Subgraph Spec
 
-**Status:** Planned. A The Graph subgraph that indexes Mend's on-chain events on Base Sepolia, so the app reads groups and expense history from a GraphQL API instead of scanning `eth_getLogs` over the full chain history on every load.
+**Status:** Planned. A The Graph subgraph that indexes Ponti's on-chain events on Base Sepolia, so the app reads groups and expense history from a GraphQL API instead of scanning `eth_getLogs` over the full chain history on every load.
 **Companions:** [`design.md`](design.md) (the why), [`app-spec.md`](app-spec.md) (the app), [`contract-spec.md`](contract-spec.md) (the contract interface).
 
 ---
@@ -21,12 +21,12 @@ What stays a direct `readContract` (NOT in the subgraph):
 
 ## Architecture (the factory pattern)
 
-`MendGroup` contracts are deployed dynamically (one per `createGroup`), so their addresses are not known up front. The Graph handles this with **dynamic data sources (templates)**:
-- A **static data source** for `MendFactory` (known address) handles `GroupCreated`.
-- Its handler spawns a **`MendGroup` template** instance for the new group's address, which then indexes that group's events.
+`PontiGroup` contracts are deployed dynamically (one per `createGroup`), so their addresses are not known up front. The Graph handles this with **dynamic data sources (templates)**:
+- A **static data source** for `PontiFactory` (known address) handles `GroupCreated`.
+- Its handler spawns a **`PontiGroup` template** instance for the new group's address, which then indexes that group's events.
 
 ```
-GroupCreated (factory) --> handler: create Group entity + MendGroup.create(groupAddress)
+GroupCreated (factory) --> handler: create Group entity + PontiGroup.create(groupAddress)
                                                               |
                               new template instance indexes that group's:
                               ExpenseAdded / ExpenseEdited / ExpenseDeleted / Settled
@@ -40,7 +40,7 @@ GroupCreated (factory) --> handler: create Group entity + MendGroup.create(group
 
 ## Mappings (event handlers)
 
-- `GroupCreated(group, memberA, memberB)` -> create `Group`; instantiate the `MendGroup` template for `group`.
+- `GroupCreated(group, memberA, memberB)` -> create `Group`; instantiate the `PontiGroup` template for `group`.
 - `ExpenseAdded(expenseId, payer, amount, description, createdAt)` -> create `Expense` (`deleted=false`, `edited=false`).
 - `ExpenseEdited(expenseId, payer, amount, description)` -> load the `Expense`, update payer/amount/description, set `edited=true`.
 - `ExpenseDeleted(expenseId, deletedBy)` -> load the `Expense`, set `deleted=true`.
@@ -50,8 +50,8 @@ Mappings are AssemblyScript (the TS-like language graph-cli compiles to WASM).
 
 ## Data sources and start block
 
-- Factory data source: address `0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da`, `startBlock` = `42151193` (`FACTORY_DEPLOY_BLOCK`).
-- `MendGroup` template: no fixed address; instances start at their creation block automatically.
+- Factory data source: address `0x17463e06C303e30044609a9a412d7DB4746Cb210`, `startBlock` = `42590257` (`FACTORY_DEPLOY_BLOCK`).
+- `PontiGroup` template: no fixed address; instances start at their creation block automatically.
 - Network: `base-sepolia` (confirmed deployable via Subgraph Studio).
 - ABIs: imported from `contracts/out` (the same compiled artifacts the app codegen uses).
 

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {MendGroup} from "./MendGroup.sol";
+import {PontiGroup} from "./PontiGroup.sol";
 
-/// @title MendFactory
-/// @notice Deploys MendGroup contracts for two-member expense-sharing relationships.
-contract MendFactory {
+/// @title PontiFactory
+/// @notice Deploys PontiGroup contracts for two-member expense-sharing relationships.
+contract PontiFactory {
     // -------------------------------------------------------------------------
     // Errors
     // -------------------------------------------------------------------------
@@ -23,8 +23,8 @@ contract MendFactory {
     // Events
     // -------------------------------------------------------------------------
 
-    /// @notice Emitted when a new MendGroup is deployed.
-    /// @param group  Address of the newly deployed MendGroup.
+    /// @notice Emitted when a new PontiGroup is deployed.
+    /// @param group  Address of the newly deployed PontiGroup.
     /// @param memberA Address of the caller (first member).
     /// @param memberB Address of the other member (second member).
     event GroupCreated(address indexed group, address indexed memberA, address indexed memberB);
@@ -51,14 +51,14 @@ contract MendFactory {
     // External functions
     // -------------------------------------------------------------------------
 
-    /// @notice Deploys a new MendGroup between msg.sender and otherMember.
+    /// @notice Deploys a new PontiGroup between msg.sender and otherMember.
     ///         Multiple groups per pair are allowed; no uniqueness check.
     /// @param otherMember The second member of the group. Must be non-zero and different from msg.sender.
-    /// @return group Address of the deployed MendGroup.
+    /// @return group Address of the deployed PontiGroup.
     function createGroup(address otherMember) external returns (address group) {
         if (msg.sender == otherMember) revert CannotGroupWithSelf();
         if (otherMember == address(0)) revert InvalidMemberAddress();
-        group = address(new MendGroup(msg.sender, otherMember, usdc));
+        group = address(new PontiGroup(msg.sender, otherMember, usdc));
         emit GroupCreated(group, msg.sender, otherMember);
     }
 }

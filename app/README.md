@@ -1,6 +1,6 @@
-# Mend — app
+# Ponti — app
 
-Vite + React single-page app for Mend. Login via Privy (email/social) provisions
+Vite + React single-page app for Ponti. Login via Privy (email/social) provisions
 a Kernel smart account; writes go out as Pimlico-sponsored UserOperations, so the
 user pays no gas. Target chain: Base Sepolia (84532).
 

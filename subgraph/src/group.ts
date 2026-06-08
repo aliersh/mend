@@ -1,8 +1,8 @@
-import { ExpenseAdded, ExpenseEdited, ExpenseDeleted, Settled } from '../generated/templates/MendGroup/MendGroup'
+import { ExpenseAdded, ExpenseEdited, ExpenseDeleted, Settled } from '../generated/templates/PontiGroup/PontiGroup'
 import { Expense, Settlement } from '../generated/schema'
 
 export function handleExpenseAdded(event: ExpenseAdded): void {
-  // Group identity = event.address — the emitting MendGroup contract.
+  // Group identity = event.address — the emitting PontiGroup contract.
   // This is the only correct source: template handlers carry no "group" param.
   let id = event.address.toHexString() + '-' + event.params.expenseId.toString()
   let expense = new Expense(id)

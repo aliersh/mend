@@ -1,4 +1,4 @@
-# Mend — Design Document
+# Ponti — Design Document
 
 **Author:** Ariel Diaz
 **Last updated:** May 28, 2026
@@ -7,7 +7,7 @@
 
 ## Overview
 
-Mend is a non-custodial system for tracking and settling shared expenses on-chain in USDC. It has two layers: a smart contract that is the source of truth for balances, splits, edits, deletes, and settlement; and an application layer that lets people use it without managing wallets, gas, or seed phrases.
+Ponti is a non-custodial system for tracking and settling shared expenses on-chain in USDC. It has two layers: a smart contract that is the source of truth for balances, splits, edits, deletes, and settlement; and an application layer that lets people use it without managing wallets, gas, or seed phrases.
 
 The contract is implemented, tested, and deployed. The application layer is the current focus — the milestone labeled M2 in the roadmap. Throughout, the contract never holds funds: settlement routes USDC directly from the debtor's wallet to the creditor's wallet.
 
@@ -60,7 +60,7 @@ The decisions fall into two groups: the settlement contract (the primitive) and 
 
 3. **Debtor-triggered settlement.** Either party could technically pull funds via the allowance, but `settle()` is restricted to the debtor. Settlement is something a user *does*, not something done *to* them; letting the creditor unilaterally withdraw, even with technical approval, would surprise users and erode trust. This is reversible later; the conservative semantics are the default.
 
-4. **Per-group contract (factory pattern).** Each group is its own `MendGroup` at its own address, with both members baked in as `immutable` constructor arguments. A `MendFactory` deploys them. This is simpler than a single registry with `groupId` parameters — no nested mappings, no per-call group-membership checks, two-line access control — and it scales naturally to multi-party templates later. Multiple groups between the same pair are allowed; that is a feature, not an oversight.
+4. **Per-group contract (factory pattern).** Each group is its own `PontiGroup` at its own address, with both members baked in as `immutable` constructor arguments. A `PontiFactory` deploys them. This is simpler than a single registry with `groupId` parameters — no nested mappings, no per-call group-membership checks, two-line access control — and it scales naturally to multi-party templates later. Multiple groups between the same pair are allowed; that is a feature, not an oversight.
 
 5. **USDC-native accounting.** All amounts are in USDC base units (6 decimals). No oracle, no fiat denomination, no rate conversion. Denominating in the settlement asset itself keeps the contract radically simpler and avoids a class of oracle-dependent edge cases.
 
@@ -80,7 +80,7 @@ The decisions fall into two groups: the settlement contract (the primitive) and 
 
 12. **Kernel (ZeroDev) smart account.** A smart account is a contract, and the implementation comes from an audited, reusable codebase. Kernel is the most widely adopted single-owner account on L2s, is modular under ERC-7579 (leaving room to add passkeys later), and is confirmed working on the EntryPoint version Privy uses with Pimlico. It is swappable from the Privy dashboard, so the choice carries low lock-in.
 
-13. **Vite + React single-page app.** Mend has no server-side state — the contract is the source of truth, and reads come from the chain and its event logs — so a client-only application matches the architecture directly and keeps a single mental model. It builds to a static bundle. A server framework would add a layer the application does not need yet.
+13. **Vite + React single-page app.** Ponti has no server-side state — the contract is the source of truth, and reads come from the chain and its event logs — so a client-only application matches the architecture directly and keeps a single mental model. It builds to a static bundle. A server framework would add a layer the application does not need yet.
 
 14. **viem for contract interaction.** A typed Ethereum library; reads come from the chain and from `ExpenseAdded` / `ExpenseEdited` / `ExpenseDeleted` event logs (the contract exposes no bulk-read helpers by design). wagmi (React hooks over viem) was considered but not adopted: the bulk of the app's reads are `getLogs`, which has no clean wagmi hook, and writes go through Privy's smart-wallet client rather than wagmi — so its caching ergonomics would not earn the added dependency stack (wagmi + react-query + a connector). Revisit if shared read/write caching becomes valuable; adding it later is additive and reversible.
 
@@ -95,7 +95,7 @@ User action in the SPA
   → Pimlico paymaster sponsors the gas; Pimlico bundler submits it
   → EntryPoint on the target chain
   → the user's Kernel smart account validates and executes the operation
-  → MendGroup.addExpense(...)
+  → PontiGroup.addExpense(...)
         msg.sender == the smart account == memberA or memberB
 ```
 
@@ -107,7 +107,7 @@ The smart account is deployed counterfactually: its first user operation also de
 
 ## Trust model and security considerations
 
-The contract's trust boundary is small: a member trusts the `MendGroup` contract's correctness and their own wallet. The application layer adds Privy, Pimlico, and the Kernel implementation to that boundary. Two public promises must continue to hold — **non-custodial** (no third party can move a member's funds) and **no platform dependency** (the ledger and the ability to settle survive the app that created them). This section states how each new dependency affects them.
+The contract's trust boundary is small: a member trusts the `PontiGroup` contract's correctness and their own wallet. The application layer adds Privy, Pimlico, and the Kernel implementation to that boundary. Two public promises must continue to hold — **non-custodial** (no third party can move a member's funds) and **no platform dependency** (the ledger and the ability to settle survive the app that created them). This section states how each new dependency affects them.
 
 **Privy — key custody.** Privy's embedded wallet is non-custodial by its documented architecture: the signing key is split via 2-of-2 Shamir Secret Sharing across an enclave share (inside a trusted execution environment) and an auth share (encrypted, released only on valid user authentication), and both are required to sign. Privy cannot move funds unilaterally. The assurance rests on trusting Privy's enclave attestation, but it is backstopped by key export, below. **Non-custodial: preserved.**
 
@@ -115,7 +115,7 @@ The contract's trust boundary is small: a member trusts the `MendGroup` contract
 
 **Pimlico — liveness, not custody.** The bundler and paymaster are a liveness dependency. If Pimlico is unavailable, a user cannot submit sponsored operations through it, but no funds are at risk, and the dependency is substitutable: the Kernel account is a standard ERC-4337 account that any bundler can serve, and a user with their exported key plus ETH could submit operations with no sponsorship service at all.
 
-**Kernel — third-party contract code.** The smart account is third-party code that now sits between the user and `MendGroup`. The application relies on Kernel being a widely adopted, audited implementation rather than re-auditing it. Control of the account follows the exportable signer key, not Privy-specific infrastructure.
+**Kernel — third-party contract code.** The smart account is third-party code that now sits between the user and `PontiGroup`. The application relies on Kernel being a widely adopted, audited implementation rather than re-auditing it. Control of the account follows the exportable signer key, not Privy-specific infrastructure.
 
 In sum, the on-chain trust model is unchanged — the contract still holds no funds and enforces the same access control. The off-chain additions introduce liveness and third-party-code considerations but grant no party any new ability to move a user's funds.
 
@@ -123,16 +123,16 @@ In sum, the on-chain trust model is unchanged — the contract still holds no fu
 
 Gas sponsorship covers gas, not the money being moved. `settle()` calls `safeTransferFrom`, which needs two things the paymaster cannot provide:
 
-1. **A USDC approval** from the user's smart account to the `MendGroup` contract, sized to exactly the amount owed and granted as part of each settlement rather than as a standing pre-approved "budget". This is itself a sponsored, gasless operation. Approving the exact debt keeps the allowance minimal (it returns to zero once `settle()` consumes it), which fits the non-custodial trust model and removes a confusing decision for a non-crypto user: there is no "how much budget?" question, and because an approval is only a permission, it never moves or reserves their funds. The transfer happens only at `settle()`.
+1. **A USDC approval** from the user's smart account to the `PontiGroup` contract, sized to exactly the amount owed and granted as part of each settlement rather than as a standing pre-approved "budget". This is itself a sponsored, gasless operation. Approving the exact debt keeps the allowance minimal (it returns to zero once `settle()` consumes it), which fits the non-custodial trust model and removes a confusing decision for a non-crypto user: there is no "how much budget?" question, and because an approval is only a permission, it never moves or reserves their funds. The transfer happens only at `settle()`.
 2. **An actual USDC balance** in the user's account. This is the hard part: a non-crypto user has no USDC, and no amount of gas sponsorship creates it.
 
 On testnet, USDC comes from Circle's Base Sepolia faucet, sent to the smart account address — a manual step outside the app, and acceptable friction for a testnet validation between a known pair of users. The settle flow approves the exact debt and calls `settle()` in a single batched user operation — the two calls execute atomically in one transaction, so the allowance is in place when `settle()` pulls it and there is no cross-transaction window for them to desynchronize; before offering the action, the interface checks that the user's USDC balance covers the debt (and surfaces the faucet step when it is short), so a user never submits a settlement that reverts.
 
-For real use on mainnet, the funding problem is solved by a fiat onramp; choosing Base positions Mend for Coinbase's onramp, which delivers USDC directly into a Base address. That integration is out of scope here and named only to record why funding is left manual rather than considered solved.
+For real use on mainnet, the funding problem is solved by a fiat onramp; choosing Base positions Ponti for Coinbase's onramp, which delivers USDC directly into a Base address. That integration is out of scope here and named only to record why funding is left manual rather than considered solved.
 
 ## Deployment scope
 
-Mend targets **Base Sepolia**. A `MendFactory` is deployed there against Circle's native Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`); its address is [`0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da`](https://sepolia.basescan.org/address/0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da), recorded in [`README.md`](../README.md). The contract was first deployed on Optimism Sepolia during M1 and moved to Base Sepolia for M2. Mainnet, other chains, and multi-chain support remain out of scope.
+Ponti targets **Base Sepolia**. A `PontiFactory` is deployed there against Circle's native Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`); its address is [`0x17463e06C303e30044609a9a412d7DB4746Cb210`](https://sepolia.basescan.org/address/0x17463e06C303e30044609a9a412d7DB4746Cb210), recorded in [`README.md`](../README.md). The contract was first deployed on Optimism Sepolia during M1 and moved to Base Sepolia for M2. Mainnet, other chains, and multi-chain support remain out of scope.
 
 ## Roadmap
 

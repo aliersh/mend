@@ -1,12 +1,12 @@
-# Mend
+# Ponti
 
 > Settle up, on-chain.
 
-[![CI](https://img.shields.io/github/actions/workflow/status/aliersh/mend/test.yml?branch=main&label=CI)](https://github.com/aliersh/mend/actions/workflows/test.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/aliersh/ponti/test.yml?branch=main&label=CI)](https://github.com/aliersh/ponti/actions/workflows/test.yml)
 [![Solidity](https://img.shields.io/badge/solidity-0.8.34-363636)](contracts/foundry.toml)
 [![Built with Foundry](https://img.shields.io/badge/built%20with-Foundry-black)](https://getfoundry.sh)
 [![Network](https://img.shields.io/badge/network-Base%20Sepolia-0052FF)](https://sepolia.basescan.org)
-[![MendFactory](https://img.shields.io/badge/MendFactory-0x7C6c…091Da-0052FF)](https://sepolia.basescan.org/address/0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da)
+[![PontiFactory](https://img.shields.io/badge/PontiFactory-0x1746…Cb210-0052FF)](https://sepolia.basescan.org/address/0x17463e06C303e30044609a9a412d7DB4746Cb210)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](#license)
 
 <!--
@@ -16,28 +16,28 @@
   - Gas snapshot, once a reproducible gas baseline is tracked
 -->
 
-Mend is a non-custodial primitive for shared expenses. Members deploy a group, record expenses against it, and settle the running balance in USDC directly between their wallets: atomically, on-chain, with no third party in the middle.
+Ponti is a non-custodial primitive for shared expenses. Members deploy a group, record expenses against it, and settle the running balance in USDC directly between their wallets: atomically, on-chain, with no third party in the middle.
 
-Existing trackers like Splitwise get the tracking right, and many now link a payment app (Venmo, Zelle) to settle. But the ledger and the money stay two systems: "settled" means someone tapped a button after paying elsewhere, not that the payment and the record are the same event. Mend keeps balances and settlement in the same place, so the payment is the proof.
+Existing trackers like Splitwise get the tracking right, and many now link a payment app (Venmo, Zelle) to settle. But the ledger and the money stay two systems: "settled" means someone tapped a button after paying elsewhere, not that the payment and the record are the same event. Ponti keeps balances and settlement in the same place, so the payment is the proof.
 
-**Status:** M1 (the contract) is deployed to Base Sepolia, `MendFactory` at [`0x7C6c…091Da`](https://sepolia.basescan.org/address/0x7C6c933B036fCe0d6663ab4F3866ACdC2A5091Da). M2 (onboarding) is in progress; see the [roadmap](#roadmap).
+**Status:** M1 (the contract) is deployed to Base Sepolia, `PontiFactory` at [`0x1746…Cb210`](https://sepolia.basescan.org/address/0x17463e06C303e30044609a9a412d7DB4746Cb210). M2 (onboarding) is in progress; see the [roadmap](#roadmap).
 
 ---
 
 ## How it works
 
-1. Two people deploy a Mend group together: one smart contract, one address, just for them.
+1. Two people deploy a Ponti group together: one smart contract, one address, just for them.
 2. Either person can record a shared expense at any time. The contract updates a single net balance. No money moves yet.
 3. Expenses can be edited or deleted. The contract recomputes the balance accordingly. A full audit trail is preserved on-chain.
 4. When the debtor wants to settle up, they call `settle()`. A single transaction approves exactly the amount owed and moves it from the debtor's wallet to the creditor's wallet, then resets the balance to zero — no standing allowance, and the contract never holds funds.
 
 ## Getting started
 
-Mend is built with [Foundry](https://getfoundry.sh).
+Ponti is built with [Foundry](https://getfoundry.sh).
 
 ```bash
-git clone https://github.com/aliersh/mend.git
-cd mend/contracts
+git clone https://github.com/aliersh/ponti.git
+cd ponti/contracts
 forge install   # fetches the forge-std and openzeppelin-contracts submodules
 forge build
 forge test
@@ -54,7 +54,7 @@ Most of the suite (unit, fuzz, and invariant tests) runs with no configuration. 
 
 ## Security
 
-Mend is deployed to testnet (Base Sepolia) only and has not been audited. **Do not use it with real funds.** The contract is non-custodial by design: it never holds funds, and settlement moves USDC directly between members' wallets. That property has not been independently reviewed.
+Ponti is deployed to testnet (Base Sepolia) only and has not been audited. **Do not use it with real funds.** The contract is non-custodial by design: it never holds funds, and settlement moves USDC directly between members' wallets. That property has not been independently reviewed.
 
 ## Roadmap
 

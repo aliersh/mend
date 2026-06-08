@@ -5,22 +5,22 @@ import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
-import {MendGroup} from "../src/MendGroup.sol";
+import {PontiGroup} from "../src/PontiGroup.sol";
 
 /// @notice Bounded handler that drives random add/edit/delete sequences against
-///         a single MendGroup. Each action is wrapped in try/catch so a revert
+///         a single PontiGroup. Each action is wrapped in try/catch so a revert
 ///         doesn't sink the fuzz run. `settle()` is intentionally excluded — if
 ///         it were included, ghost-state cleanup would be required to keep the
 ///         recomputed sum-of-contributions in sync with the zeroed contract
 ///         balance. Settle has dedicated unit + reentrancy coverage.
-contract MendGroupHandler is Test {
-    MendGroup internal immutable GROUP;
+contract PontiGroupHandler is Test {
+    PontiGroup internal immutable GROUP;
     address internal immutable MEMBER_A;
     address internal immutable MEMBER_B;
 
     uint256 public addedCount;
 
-    constructor(MendGroup _group, address _memberA, address _memberB) {
+    constructor(PontiGroup _group, address _memberA, address _memberB) {
         GROUP = _group;
         MEMBER_A = _memberA;
         MEMBER_B = _memberB;
@@ -43,7 +43,7 @@ contract MendGroupHandler is Test {
         if (n == 0) return;
         uint256 id = bound(idSeed, 0, n - 1);
 
-        MendGroup.Expense memory e = GROUP.getExpense(id);
+        PontiGroup.Expense memory e = GROUP.getExpense(id);
         if (e.deleted) return;
 
         uint256 amount = bound(amountSeed, 1, 1e24);
@@ -56,7 +56,7 @@ contract MendGroupHandler is Test {
         if (n == 0) return;
         uint256 id = bound(idSeed, 0, n - 1);
 
-        MendGroup.Expense memory e = GROUP.getExpense(id);
+        PontiGroup.Expense memory e = GROUP.getExpense(id);
         if (e.deleted) return;
 
         vm.prank(_pick(callerIsA));
@@ -68,10 +68,10 @@ contract MendGroupHandler is Test {
     }
 }
 
-contract MendGroupInvariantTest is StdInvariant, Test {
+contract PontiGroupInvariantTest is StdInvariant, Test {
     ERC20Mock internal usdc;
-    MendGroup internal group;
-    MendGroupHandler internal handler;
+    PontiGroup internal group;
+    PontiGroupHandler internal handler;
 
     address internal memberA;
     address internal memberB;
@@ -86,8 +86,8 @@ contract MendGroupInvariantTest is StdInvariant, Test {
         memberA = makeAddr("memberA");
         memberB = makeAddr("memberB");
 
-        group = new MendGroup(memberA, memberB, address(usdc));
-        handler = new MendGroupHandler(group, memberA, memberB);
+        group = new PontiGroup(memberA, memberB, address(usdc));
+        handler = new PontiGroupHandler(group, memberA, memberB);
 
         snapMemberA = group.memberA();
         snapMemberB = group.memberB();
@@ -96,10 +96,10 @@ contract MendGroupInvariantTest is StdInvariant, Test {
         // Restrict fuzzer to the four bounded handler entry points. Without a
         // selector list the fuzzer would also call inherited Test functions.
         bytes4[] memory selectors = new bytes4[](4);
-        selectors[0] = MendGroupHandler.handlerAddExpense.selector;
-        selectors[1] = MendGroupHandler.handlerEditExpense.selector;
-        selectors[2] = MendGroupHandler.handlerDeleteExpense.selector;
-        selectors[3] = MendGroupHandler.handlerWarp.selector;
+        selectors[0] = PontiGroupHandler.handlerAddExpense.selector;
+        selectors[1] = PontiGroupHandler.handlerEditExpense.selector;
+        selectors[2] = PontiGroupHandler.handlerDeleteExpense.selector;
+        selectors[3] = PontiGroupHandler.handlerWarp.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
         targetContract(address(handler));
     }
@@ -110,7 +110,7 @@ contract MendGroupInvariantTest is StdInvariant, Test {
         int256 expected;
         uint256 n = group.nextExpenseId();
         for (uint256 i = 0; i < n; i++) {
-            MendGroup.Expense memory e = group.getExpense(i);
+            PontiGroup.Expense memory e = group.getExpense(i);
             if (e.deleted) continue;
             int256 half = int256(e.amount / 2);
             expected += (e.payer == memberA) ? half : -half;

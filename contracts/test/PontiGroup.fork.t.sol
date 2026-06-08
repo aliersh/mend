@@ -4,11 +4,11 @@ pragma solidity 0.8.34;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {MendGroup} from "../src/MendGroup.sol";
+import {PontiGroup} from "../src/PontiGroup.sol";
 
 /// @notice Fork tests against real USDC on Base Sepolia. Skips when
 ///         `BASE_SEPOLIA_RPC_URL` is unset.
-contract MendGroupForkTest is Test {
+contract PontiGroupForkTest is Test {
     /// USDC on Base Sepolia (Circle native). Source: .env.
     address internal constant USDC = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
 
@@ -17,7 +17,7 @@ contract MendGroupForkTest is Test {
     /// implementation is ever upgraded.
     uint256 internal constant FORK_BLOCK = 42_149_000;
 
-    MendGroup internal group;
+    PontiGroup internal group;
     address internal memberA;
     address internal memberB;
 
@@ -32,7 +32,7 @@ contract MendGroupForkTest is Test {
 
         memberA = makeAddr("memberA");
         memberB = makeAddr("memberB");
-        group = new MendGroup(memberA, memberB, USDC);
+        group = new PontiGroup(memberA, memberB, USDC);
 
         _fundWithUsdc(memberA, 1_000_000_000); // 1,000 USDC
         _fundWithUsdc(memberB, 1_000_000_000);
@@ -40,7 +40,7 @@ contract MendGroupForkTest is Test {
         vm.label(USDC, "USDC");
         vm.label(memberA, "memberA");
         vm.label(memberB, "memberB");
-        vm.label(address(group), "MendGroup");
+        vm.label(address(group), "PontiGroup");
     }
 
     function _fundWithUsdc(address to, uint256 amount) internal {

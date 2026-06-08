@@ -2,13 +2,13 @@
 pragma solidity 0.8.34;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {MendGroup} from "../../src/MendGroup.sol";
+import {PontiGroup} from "../../src/PontiGroup.sol";
 
-/// @notice Reentrancy vector for MendGroup's `settle()` nonReentrant guard.
+/// @notice Reentrancy vector for PontiGroup's `settle()` nonReentrant guard.
 ///         The inner revert MUST bubble up — if caught, the assertion shifts to `AlreadySettled`.
 contract ReentrantToken is IERC20 {
     function transferFrom(address, address, uint256) external returns (bool) {
-        MendGroup(msg.sender).settle();
+        PontiGroup(msg.sender).settle();
         return true;
     }
 

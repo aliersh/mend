@@ -1,5 +1,5 @@
-import { GroupCreated } from '../generated/MendFactory/MendFactory'
-import { MendGroup } from '../generated/templates'
+import { GroupCreated } from '../generated/PontiFactory/PontiFactory'
+import { PontiGroup } from '../generated/templates'
 import { Group } from '../generated/schema'
 
 export function handleGroupCreated(event: GroupCreated): void {
@@ -11,6 +11,6 @@ export function handleGroupCreated(event: GroupCreated): void {
   group.save()
 
   // Spawn a template instance so this group's events get indexed.
-  // event.params.group is the newly deployed MendGroup contract address.
-  MendGroup.create(event.params.group)
+  // event.params.group is the newly deployed PontiGroup contract address.
+  PontiGroup.create(event.params.group)
 }

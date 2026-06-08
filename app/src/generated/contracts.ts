@@ -245,7 +245,7 @@ export const groupAbi = [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct MendGroup.Expense",
+        "internalType": "struct PontiGroup.Expense",
         "components": [
           {
             "name": "payer",

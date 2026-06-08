@@ -16,7 +16,7 @@ import { waitForSubgraphBlock } from './lib/subgraph'
 type SendUserOperation = (req: { to: Address; data: Hex }) => Promise<Hex>
 type SendBatch = (calls: { to: Address; data: Hex }[]) => Promise<Hex>
 
-// The smart account's address is the user's identity in Mend (the member that
+// The smart account's address is the user's identity in Ponti (the member that
 // gets registered). Privy exposes it as a linked account of type smart_wallet.
 function useSmartAccountAddress(): Address | undefined {
   const { user } = usePrivy()
@@ -141,7 +141,7 @@ export function App() {
   if (!authenticated) {
     return (
       <main style={page}>
-        <h1>Mend</h1>
+        <h1>Ponti</h1>
         <button onClick={login}>Log in</button>
       </main>
     )

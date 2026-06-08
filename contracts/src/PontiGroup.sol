@@ -5,12 +5,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title MendGroup
+/// @title PontiGroup
 /// @notice Two-party non-custodial IOU contract that tracks shared expenses
 ///         between two fixed members and settles in USDC. The contract never
 ///         holds funds in normal operation — settlement routes USDC directly
 ///         from debtor to creditor via ERC-20 `approve` + `safeTransferFrom`.
-contract MendGroup is ReentrancyGuard {
+contract PontiGroup is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // -----------------------------------------------------------------------
@@ -145,7 +145,7 @@ contract MendGroup is ReentrancyGuard {
     // Constructor
     // -----------------------------------------------------------------------
 
-    /// @notice Deploy a new MendGroup with two fixed members and a fixed USDC token.
+    /// @notice Deploy a new PontiGroup with two fixed members and a fixed USDC token.
     /// @param _memberA First member address.
     /// @param _memberB Second member address.
     /// @param _usdc USDC token address.

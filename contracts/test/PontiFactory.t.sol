@@ -4,21 +4,21 @@ pragma solidity 0.8.34;
 import {Test} from "forge-std/Test.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
-import {MendFactory} from "../src/MendFactory.sol";
-import {MendGroup} from "../src/MendGroup.sol";
+import {PontiFactory} from "../src/PontiFactory.sol";
+import {PontiGroup} from "../src/PontiGroup.sol";
 
-contract MendFactoryTest is Test {
+contract PontiFactoryTest is Test {
     event GroupCreated(address indexed group, address indexed memberA, address indexed memberB);
 
     ERC20Mock internal usdc;
-    MendFactory internal factory;
+    PontiFactory internal factory;
 
     address internal memberA;
     address internal memberB;
 
     function setUp() public {
         usdc = new ERC20Mock();
-        factory = new MendFactory(address(usdc));
+        factory = new PontiFactory(address(usdc));
         memberA = makeAddr("memberA");
         memberB = makeAddr("memberB");
     }
@@ -28,8 +28,8 @@ contract MendFactoryTest is Test {
     // ---------------------------------------------------------------------
 
     function test_Constructor_RevertsOnZeroUsdc() public {
-        vm.expectRevert(MendFactory.InvalidUsdcAddress.selector);
-        new MendFactory(address(0));
+        vm.expectRevert(PontiFactory.InvalidUsdcAddress.selector);
+        new PontiFactory(address(0));
     }
 
     function test_Constructor_StoresUsdc() public view {
@@ -42,13 +42,13 @@ contract MendFactoryTest is Test {
 
     function test_CreateGroup_RevertsOnSelfGroup() public {
         vm.prank(memberA);
-        vm.expectRevert(MendFactory.CannotGroupWithSelf.selector);
+        vm.expectRevert(PontiFactory.CannotGroupWithSelf.selector);
         factory.createGroup(memberA);
     }
 
     function test_CreateGroup_RevertsOnZeroOtherMember() public {
         vm.prank(memberA);
-        vm.expectRevert(MendFactory.InvalidMemberAddress.selector);
+        vm.expectRevert(PontiFactory.InvalidMemberAddress.selector);
         factory.createGroup(address(0));
     }
 
@@ -60,7 +60,7 @@ contract MendFactoryTest is Test {
         vm.prank(memberA);
         address groupAddr = factory.createGroup(memberB);
 
-        MendGroup group = MendGroup(payable(groupAddr));
+        PontiGroup group = PontiGroup(payable(groupAddr));
         assertEq(group.memberA(), memberA);
         assertEq(group.memberB(), memberB);
         assertEq(group.usdc(), address(usdc));
@@ -85,10 +85,10 @@ contract MendFactoryTest is Test {
         vm.stopPrank();
 
         assertTrue(g1 != g2);
-        assertEq(MendGroup(payable(g1)).memberA(), memberA);
-        assertEq(MendGroup(payable(g2)).memberA(), memberA);
-        assertEq(MendGroup(payable(g1)).memberB(), memberB);
-        assertEq(MendGroup(payable(g2)).memberB(), memberB);
+        assertEq(PontiGroup(payable(g1)).memberA(), memberA);
+        assertEq(PontiGroup(payable(g2)).memberA(), memberA);
+        assertEq(PontiGroup(payable(g1)).memberB(), memberB);
+        assertEq(PontiGroup(payable(g2)).memberB(), memberB);
     }
 
     // ---------------------------------------------------------------------
@@ -101,7 +101,7 @@ contract MendFactoryTest is Test {
         vm.assume(caller != other);
 
         vm.prank(caller);
-        MendGroup group = MendGroup(payable(factory.createGroup(other)));
+        PontiGroup group = PontiGroup(payable(factory.createGroup(other)));
 
         assertEq(group.memberA(), caller);
         assertEq(group.memberB(), other);

@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import {Script, console} from "forge-std/Script.sol";
 
-import {MendFactory} from "../src/MendFactory.sol";
+import {PontiFactory} from "../src/PontiFactory.sol";
 
 contract Deploy is Script {
     function run() external {
@@ -16,11 +16,11 @@ contract Deploy is Script {
         }
 
         vm.startBroadcast();
-        MendFactory factory = new MendFactory(usdc);
+        PontiFactory factory = new PontiFactory(usdc);
         vm.stopBroadcast();
 
         console.log("Chain ID:       ", block.chainid);
-        console.log("MendFactory at: ", address(factory));
+        console.log("PontiFactory at: ", address(factory));
         console.log("USDC address:   ", usdc);
     }
 }

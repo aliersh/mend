@@ -180,7 +180,7 @@ export function GroupDetail({ address, smartAccount, send, sendBatch }: Props) {
   return (
     <main style={page}>
       <button onClick={() => navigate('/')}>← Back</button>
-      <h1>Mend</h1>
+      <h1>Ponti</h1>
       <h2>Group with <code style={{ fontSize: '0.85em' }}>{resolvedGroup.counterparty}</code></h2>
       <p style={{ color: 'grey', fontSize: '0.8em' }}>
         Contract: <code>{resolvedGroup.address}</code>

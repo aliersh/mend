@@ -12,8 +12,8 @@ const abisDir = resolve(__dirname, '../abis')
 mkdirSync(abisDir, { recursive: true })
 
 const contracts = [
-  ['MendFactory.sol', 'MendFactory'],
-  ['MendGroup.sol',   'MendGroup'],
+  ['PontiFactory.sol', 'PontiFactory'],
+  ['PontiGroup.sol',   'PontiGroup'],
 ]
 
 for (const [file, name] of contracts) {
