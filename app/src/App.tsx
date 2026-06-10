@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
 import { getAddress, isAddress } from 'viem'
@@ -7,6 +7,7 @@ import type { Address, Hex } from 'viem'
 import type { CSSProperties } from 'react'
 import { HomeView } from './components/HomeView'
 import { GroupDetail } from './components/GroupDetail'
+import { ProofCard } from './components/ProofCard'
 import { fetchMyGroups } from './lib/fetchGroups'
 import type { GroupItem } from './lib/fetchGroups'
 import { submitCreateGroup, fetchGroupAddress } from './lib/createGroup'
@@ -47,6 +48,7 @@ export function App() {
   const { client } = useSmartWallets()
   const smartAccount = useSmartAccountAddress()
   const navigate = useNavigate()
+  const location = useLocation()
 
   // groups state lives here so it persists across home/detail navigation and
   // loads exactly once when smartAccount first becomes available.
@@ -135,6 +137,9 @@ export function App() {
     }
     return null
   }, [counterparty, smartAccount])
+
+  // Dev-only proof route: reachable without authentication.
+  if (location.pathname === '/_proof') return <ProofCard />
 
   if (!ready) return <main style={page}><p>Loading…</p></main>
 

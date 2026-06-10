@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Dark mode keys off [data-theme="dark"] on any ancestor, not prefers-color-scheme. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* ── Canonical color + shadow tokens (single source of truth; EXACT handoff names) ──
+   These flip light→dark at runtime, and the handoff names (--bg) differ from Tailwind's
+   color namespace (--color-bg), so they use the :root layer + @theme inline bridge:
+   utilities resolve through var(--bg), which [data-theme="dark"] re-points. */
+:root {
+  --bg:#FBF7F4; --surface:#FFFFFF; --surface-2:#F4EEEA;
+  --ink:#241F22; --muted:#786E72; --border:#ECE2DD;
+  --accent:#B23A6B; --accent-strong:#A1305F; --accent-soft:#F8E4ED; --accent-ink:#FFFFFF;
+  --shadow: 0 1px 2px rgba(36,31,34,.05), 0 10px 26px -14px rgba(36,31,34,.18);
+}
+[data-theme="dark"] {
+  --bg:#1A171A; --surface:#221D21; --surface-2:#2A242A;
+  --ink:#F1EAEE; --muted:#A99FA5; --border:#382F36;
+  --accent:#E36796; --accent-strong:#E36796; --accent-soft:#36202B; --accent-ink:#1A1115;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.6);
+}
+
+@theme inline {
+  --color-bg:            var(--bg);
+  --color-surface:       var(--surface);
+  --color-surface-2:     var(--surface-2);
+  --color-ink:           var(--ink);
+  --color-muted:         var(--muted);
+  --color-border:        var(--border);
+  --color-accent:        var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft:   var(--accent-soft);
+  --color-accent-ink:    var(--accent-ink);
+  /* Shadow bridge: --shadow-card (distinct from the :root --shadow var) generates the
+     shadow-card utility; value is var(--shadow) so it flips with [data-theme="dark"]. */
+  --shadow-card:         var(--shadow);
+}
+
+/* ── Static tokens — defined directly in @theme so the EXACT names are emitted as
+   :root vars AND generate utilities. No runtime flip. ── */
+@theme {
+  --font-display: "Schibsted Grotesk", system-ui, sans-serif;  /* → font-display */
+  --font-ui:      "Hanken Grotesk", system-ui, sans-serif;     /* → font-ui */
+
+  --radius:        6px;    /* sharp (locked) → rounded */
+  --radius-sm:     4px;    /* sharp (locked) → rounded-sm */
+  --radius-pill:   999px;  /* → rounded-pill */
+  --radius-sheet:  22px;   /* → rounded-sheet (bottom-sheet top radius) */
+  --radius-modal:  20px;   /* → rounded-modal (desktop modal) */
+
+  --spacing-18: 18px;      /* px-valued tokens → p-18 / gap-18 / px-18 … (NOT 18×base) */
+  --spacing-22: 22px;      /* → p-22 / gap-22 / px-22 … */
+}
+
+/* Numeric figures (mirrors the design's .tnum/.pnum). */
+@utility tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.012em;
+}
+@utility pnum {
+  font-variant-numeric: proportional-nums lining-nums;
+}
