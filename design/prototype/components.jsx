@@ -27,6 +27,8 @@ function Mark({ s = 28 }) {
 const I = {
   plus: (c = "currentColor") => <svg width="18" height="18" viewBox="0 0 18 18"><path d="M9 3v12M3 9h12" stroke={c} strokeWidth="2" strokeLinecap="round"/></svg>,
   check: (c = "currentColor", w = 18) => <svg width={w} height={w} viewBox="0 0 18 18"><path d="M3.5 9.5l3.5 3.5 7.5-8" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
+  arrowIn: (c = "currentColor", w = 16) => <svg width={w} height={w} viewBox="0 0 18 18" fill="none" style={{ display: "block" }}><path d="M9 3.2V12.6M4.6 8.1L9 12.8 13.4 8.1" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+  arrowOut: (c = "currentColor", w = 16) => <svg width={w} height={w} viewBox="0 0 18 18" fill="none" style={{ display: "block" }}><path d="M9 14.8V5.4M4.6 9.9L9 5.2 13.4 9.9" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
   left: (c = "currentColor") => <svg width="20" height="20" viewBox="0 0 20 20"><path d="M12 4l-6 6 6 6" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
   right: (c = "currentColor") => <svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>,
   dots: (c = "currentColor") => <svg width="18" height="5" viewBox="0 0 18 5"><circle cx="2.5" cy="2.5" r="2" fill={c}/><circle cx="9" cy="2.5" r="2" fill={c}/><circle cx="15.5" cy="2.5" r="2" fill={c}/></svg>,
@@ -221,6 +223,27 @@ function balanceWords(balance) {
   return { line: "you owe", sign: "−", amount: money(balance), owe: true };
 }
 
+// ── Directional flow chip — LOCKED balance-direction treatment (Option A) ──
+// Arrow (↓ in · ↑ out · ✓ settled) + word, in a pill. The accent reinforces the
+// "you owe" side only (it carries a pending Settle action); "owes you" + settled
+// stay neutral. Honors the money rule: this is a label element, never the number,
+// so no amount is ever colored. The chip carries direction → drop the +/− sign.
+function DirChip({ balance, size = "md", label }) {
+  const dir = balance === 0 ? "settled" : balance < 0 ? "out" : "in";
+  const isAccent = dir === "out";
+  const word = label != null ? label
+    : dir === "settled" ? "settled up" : dir === "out" ? "you owe" : "owes you";
+  const fs = size === "sm" ? 11.5 : size === "lg" ? 13 : 12.5;
+  const pad = size === "sm" ? "3px 8px 3px 6px" : "5px 11px 5px 8px";
+  const c = isAccent ? "var(--accent)" : "var(--muted)";
+  const icon = dir === "in" ? I.arrowIn(c, fs + 3) : dir === "out" ? I.arrowOut(c, fs + 3) : I.check(c, fs + 1);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-ui)",
+      fontSize: fs, fontWeight: 600, padding: pad, borderRadius: 999, whiteSpace: "nowrap",
+      background: isAccent ? "var(--accent-soft)" : "var(--surface-2)", color: c }}>{icon}{word}</span>
+  );
+}
+
 function GroupRow({ g, onClick }) {
   const b = balanceWords(g.balance);
   return (
@@ -238,12 +261,12 @@ function GroupRow({ g, onClick }) {
         </div>
         <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--muted)" }}>{g.label}</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
         {g.balance === 0
-          ? <Pill tone="ok">{I.check("var(--muted)", 12)} settled</Pill>
+          ? <DirChip balance={0} size="sm" />
           : <>
-              <Num size={16} weight={700}>{b.sign}{b.amount}</Num>
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 11.5, color: "var(--muted)", fontWeight: 600 }}>{b.line}</span>
+              <Num size={16} weight={700}>{b.amount}</Num>
+              <DirChip balance={g.balance} size="sm" />
             </>}
       </div>
     </button>
@@ -275,5 +298,5 @@ function QRCode({ value = "ponti", size = 168, fg = "var(--ink)" }) {
 
 Object.assign(window, {
   money, Wordmark, Mark, I, Avatar, AvatarUpload, AccountEmail, Num, Button, Pill, Field, Input, Skeleton,
-  SectionLabel, balanceWords, GroupRow, QRCode, ThemeToggle,
+  SectionLabel, balanceWords, DirChip, GroupRow, QRCode, ThemeToggle,
 });

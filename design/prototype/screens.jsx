@@ -61,12 +61,14 @@ function Home({ data, demoState, onOpenGroup, onCreate, onProfile, onAddFunds })
 
       {/* net summary */}
       <div style={{ padding: "2px 2px 20px" }}>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
-          {net >= 0 ? "You're owed, net" : "You owe, net"}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
+          <DirChip balance={net} label={net > 0 ? "You're owed" : net < 0 ? "You owe" : "Settled up"} />
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
+            textTransform: "uppercase", color: "var(--muted)" }}>net</span>
+        </div>
         <div className="pnum" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 38,
-          letterSpacing: "-0.04em", color: "var(--ink)", lineHeight: 1.1, marginTop: 2 }}>
-          {net < 0 ? "−" : "+"}{money(net)} <span style={{ fontSize: 16, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.02em", marginLeft: 1 }}>USDC</span>
+          letterSpacing: "-0.04em", color: "var(--ink)", lineHeight: 1.1 }}>
+          {money(net)} <span style={{ fontSize: 16, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.02em", marginLeft: 1 }}>USDC</span>
         </div>
       </div>
 
@@ -222,11 +224,12 @@ function GroupDetail({ g, data, postWrite, onBack, onAdd, onSettle, onEditExpens
       {/* balance hero */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
         padding: "20px 18px", boxShadow: "var(--shadow)" }}>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 13.5, fontWeight: 600, color: "var(--muted)" }}>
-          {g.balance === 0 ? "You're all squared away" : (youOwe ? `You owe ${g.nickname}` : `${g.nickname} owes you`)}
-        </span>
+        <div style={{ marginBottom: 11 }}>
+          <DirChip balance={g.balance} size="lg"
+            label={g.balance === 0 ? "All settled up" : (youOwe ? `You owe ${g.nickname}` : `${g.nickname} owes you`)} />
+        </div>
         <div className="pnum" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 44,
-          letterSpacing: "-0.045em", color: "var(--ink)", lineHeight: 1.05, margin: "4px 0 0" }}>
+          letterSpacing: "-0.045em", color: "var(--ink)", lineHeight: 1.05, margin: 0 }}>
           {g.balance === 0 ? "Settled" : <>{money(g.balance)} <span style={{ fontSize: 18, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.02em", marginLeft: 1 }}>USDC</span></>}
         </div>
 

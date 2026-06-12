@@ -115,12 +115,14 @@ function NetSummary({ groups, size = 44 }) {
   const net = groups.reduce((s, g) => s + g.balance, 0);
   return (
     <div>
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
-        {net >= 0 ? "You're owed, net" : "You owe, net"}
-      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
+        <DirChip balance={net} label={net > 0 ? "You're owed" : net < 0 ? "You owe" : "Settled up"} />
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
+          textTransform: "uppercase", color: "var(--muted)" }}>net</span>
+      </div>
       <div className="pnum" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: size,
-        letterSpacing: "-0.04em", color: "var(--ink)", lineHeight: 1.08, marginTop: 3 }}>
-        {net < 0 ? "−" : "+"}{money(net)} <span style={{ fontSize: size * 0.42, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.02em", marginLeft: 1 }}>USDC</span>
+        letterSpacing: "-0.04em", color: "var(--ink)", lineHeight: 1.08 }}>
+        {money(net)} <span style={{ fontSize: size * 0.42, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.02em", marginLeft: 1 }}>USDC</span>
       </div>
     </div>
   );
@@ -142,12 +144,12 @@ function RailGroupRow({ g, active, onClick }) {
         </div>
         <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--muted)" }}>{g.label}</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
         {g.balance === 0
-          ? <Pill tone="ok">{I.check("var(--muted)", 12)} settled</Pill>
+          ? <DirChip balance={0} size="sm" />
           : <>
-              <Num size={15} weight={700}>{b.sign}{b.amount}</Num>
-              <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>{b.line}</span>
+              <Num size={15} weight={700}>{b.amount}</Num>
+              <DirChip balance={g.balance} size="sm" />
             </>}
       </div>
     </button>
@@ -190,11 +192,12 @@ function GroupDetailPane({ g, data, postWrite, lowUsdc, onAdd, onSettle, onEditE
       {/* balance hero */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--radius)",
         padding: "28px 30px", boxShadow: "var(--shadow)" }}>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>
-          {g.balance === 0 ? "You're all squared away" : (youOwe ? `You owe ${g.nickname}` : `${g.nickname} owes you`)}
-        </span>
+        <div style={{ marginBottom: 12 }}>
+          <DirChip balance={g.balance} size="lg"
+            label={g.balance === 0 ? "All settled up" : (youOwe ? `You owe ${g.nickname}` : `${g.nickname} owes you`)} />
+        </div>
         <div className="pnum" style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 52,
-          letterSpacing: "-0.045em", color: "var(--ink)", lineHeight: 1.02, margin: "4px 0 0" }}>
+          letterSpacing: "-0.045em", color: "var(--ink)", lineHeight: 1.02, margin: 0 }}>
           {g.balance === 0 ? "Settled" : <>{money(g.balance)} <span style={{ fontSize: 22, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.02em", marginLeft: 1 }}>USDC</span></>}
         </div>
 

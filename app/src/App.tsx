@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { usePrivy } from '@privy-io/react-auth'
 import { useSmartWallets } from '@privy-io/react-auth/smart-wallets'
-import { getAddress, isAddress } from 'viem'
+import { isAddress } from 'viem'
 import type { Address, Hex } from 'viem'
 import type { CSSProperties } from 'react'
 import { HomeView } from './components/HomeView'
 import { GroupDetail } from './components/GroupDetail'
-import { ProofCard } from './components/ProofCard'
+import { SignIn } from './components/SignIn'
 import { fetchMyGroups } from './lib/fetchGroups'
 import type { GroupItem } from './lib/fetchGroups'
-import { submitCreateGroup, fetchGroupAddress } from './lib/createGroup'
-import { publicClient } from './lib/client'
-import { waitForSubgraphBlock } from './lib/subgraph'
 
 type SendUserOperation = (req: { to: Address; data: Hex }) => Promise<Hex>
 type SendBatch = (calls: { to: Address; data: Hex }[]) => Promise<Hex>
@@ -44,25 +41,17 @@ function GroupDetailWrapper({
 }
 
 export function App() {
-  const { ready, authenticated, login, logout } = usePrivy()
+  const { ready, authenticated, logout } = usePrivy()
   const { client } = useSmartWallets()
   const smartAccount = useSmartAccountAddress()
   const navigate = useNavigate()
-  const location = useLocation()
 
   // groups state lives here so it persists across home/detail navigation and
   // loads exactly once when smartAccount first becomes available.
   const [groups, setGroups] = useState<GroupItem[]>([])
   const [loadingGroups, setLoadingGroups] = useState(false)
   const [groupsInitialized, setGroupsInitialized] = useState(false)
-
-  // create-group state lives here so it survives home/detail/home round-trips.
-  const [counterparty, setCounterparty] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [txHash, setTxHash] = useState<Hex | null>(null)
-  const [createdGroup, setCreatedGroup] = useState<Address | null>(null)
-  const [groupNote, setGroupNote] = useState<string | null>(null)
-  const [createError, setCreateError] = useState<string | null>(null)
+  const [groupsError, setGroupsError] = useState(false)
 
   const send: SendUserOperation | undefined = client
     ? async (req) => (await client.sendTransaction(req)) as Hex
@@ -73,24 +62,12 @@ export function App() {
     : undefined
 
   async function loadGroups(account: Address) {
+    setGroupsError(false)
     setLoadingGroups(true)
     try {
       setGroups(await fetchMyGroups(account))
-    } finally {
-      setLoadingGroups(false)
-      setGroupsInitialized(true)
-    }
-  }
-
-  // Waits for the subgraph to index at least the chain head at call time, then
-  // fetches the full groups list once. The _meta gate guarantees the new group
-  // is visible without polling for a specific address.
-  async function loadGroupsUntilNew(account: Address, _expectedAddress: Address) {
-    setLoadingGroups(true)
-    try {
-      const target = await publicClient.getBlockNumber()
-      await waitForSubgraphBlock(target)
-      setGroups(await fetchMyGroups(account))
+    } catch {
+      setGroupsError(true)
     } finally {
       setLoadingGroups(false)
       setGroupsInitialized(true)
@@ -102,54 +79,11 @@ export function App() {
     loadGroups(smartAccount)
   }, [smartAccount])
 
-  async function onCreate() {
-    if (!send || !isAddress(counterparty) || !smartAccount) return
-    setSubmitting(true)
-    setCreateError(null)
-    setTxHash(null)
-    setCreatedGroup(null)
-    setGroupNote(null)
-    try {
-      // The hash is the proof the sponsored write went out; surface it first.
-      const hash = await submitCreateGroup(send, counterparty)
-      setTxHash(hash)
-      // Best-effort: a receipt/parse failure here does not mean the transaction
-      // failed (the Basescan link is the proof of that).
-      try {
-        const newGroupAddress = await fetchGroupAddress(hash)
-        setCreatedGroup(newGroupAddress)
-        await loadGroupsUntilNew(smartAccount, newGroupAddress)
-      } catch (e) {
-        setGroupNote(e instanceof Error ? e.message : String(e))
-      }
-    } catch (e) {
-      setCreateError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const validationError = useMemo(() => {
-    if (!counterparty) return null
-    if (!isAddress(counterparty)) return 'Not a valid address.'
-    if (smartAccount && getAddress(counterparty) === getAddress(smartAccount)) {
-      return 'Cannot create a group with yourself.'
-    }
-    return null
-  }, [counterparty, smartAccount])
-
-  // Dev-only proof route: reachable without authentication.
-  if (location.pathname === '/_proof') return <ProofCard />
 
   if (!ready) return <main style={page}><p>Loading…</p></main>
 
   if (!authenticated) {
-    return (
-      <main style={page}>
-        <h1>Ponti</h1>
-        <button onClick={login}>Log in</button>
-      </main>
-    )
+    return <SignIn />
   }
 
   return (
@@ -159,23 +93,15 @@ export function App() {
         element={
           <HomeView
             smartAccount={smartAccount}
-            send={send}
             groups={groups}
             loadingGroups={loadingGroups}
             groupsInitialized={groupsInitialized}
+            groupsError={groupsError}
             onSelectGroup={(group) =>
               navigate('/group/' + group.address, { state: { group } })
             }
-            logout={logout}
-            counterparty={counterparty}
-            onCounterpartyChange={setCounterparty}
-            submitting={submitting}
-            txHash={txHash}
-            createdGroup={createdGroup}
-            groupNote={groupNote}
-            createError={createError}
-            validationError={validationError}
-            onCreate={onCreate}
+            onRetry={() => smartAccount && void loadGroups(smartAccount)}
+            onLogout={logout}
           />
         }
       />

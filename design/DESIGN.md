@@ -106,6 +106,18 @@ fixed value (§7).
     app soon — so desktop must also work in a phone browser.
 12. **Corners are SHARP.** `--radius 6` / `--radius-sm 4`. (A soft 10/7 variant was
     explored and rejected.)
+13. **Balance direction = DirChip — flow chip (Jun 12).** Direction (owed / owe /
+    settled) is shown by a small **arrow + word PILL** (`DirChip` in `components.jsx`)
+    next to — never on — the amount. Arrows: **↓ in** (owes you) · **↑ out** (you
+    owe) · **✓** (settled). Icon names: `I.arrowIn` / `I.arrowOut` / `I.check`.
+    **Accent on "you owe" only** (accent-soft bg + accent text/arrow — it carries the
+    pending Settle); "owes you" + settled stay neutral (surface-2 / muted). Numbers
+    stay `--ink`; chip carries direction → **+/− sign dropped** from displayed
+    amounts. Sizes: `lg` (hero) · `md` (Home/desktop net + "NET" mini-label) · `sm`
+    (rows). Hero/net chips personalize the label ("You owe Cami" / "Cami owes you" /
+    "You're owed" / "All settled up"); rows use short form. Applied on every
+    balance-direction surface: Home net, group rows, group-detail balance hero, mobile
+    + desktop. **Money rule stays intact — no number is ever colored.**
 
 **Out of scope / deferred** (NOT "incomplete"): local-currency ≈CLP/USD, EN/ES
 toggle, Google sign-in, group naming/tagging.
@@ -187,9 +199,7 @@ Email only — no Google, no password. States: idle, submitting, "check your ema
 
 ### 8.2 Home — **extend** → `HomeView`
 Top app bar (brand + Your-Ponti/profile entry); a **net summary** header (one big
-**proportional** amount in `--ink`, USDC suffix, a plain caption like "You're owed,
-net"); a compact **WalletStrip** (§10); then a list of **group rows** (avatar +
-nickname + the per-pair balance, **tabular**). Primary "Add someone" affordance.
+**proportional** amount in `--ink`, USDC suffix, a **DirChip** (§5.13) — directional arrow + word pill + "NET" mini-label, accent only on "you owe" side; a compact **WalletStrip** (§10); then a list of **group rows** (avatar + nickname + balance **tabular** + a **DirChip sm** below the amount — no +/− sign; settled rows show a check chip). Primary "Add someone" affordance.
 **States** (all in the Tweaks demo-state control):
 - **normal** — net header + group rows.
 - **loading** — skeleton rows (no spinner-only screens).
@@ -200,8 +210,10 @@ nickname + the per-pair balance, **tabular**). Primary "Add someone" affordance.
 
 ### 8.3 Group detail — **extend** → `GroupDetail` (+ `ExpenseList`, `SettleSection`)
 Top→bottom:
-1. **Balance hero** — big **proportional** amount in `--ink` + caption ("Cami owes
-   you" / "You owe Cami" / "Settled"). Counterparty = nickname + avatar. A small
+1. **Balance hero** — a **DirChip lg** (§5.13) personalized with the counterparty
+   name ("You owe Cami" / "Cami owes you" / "All settled up") above a big
+   **proportional** amount in `--ink`. Settled: check chip + "Settled" text.
+   Counterparty = nickname + avatar. A small
    group-header **"details"** disclosure *(currently a stub in the prototype — wire
    it).*
 2. **Activity timeline** — expenses as a vertical timeline. A **settle is a
@@ -315,7 +327,8 @@ testnet faucet), grant `20` USDC.
   `int256`) and the user's **USDC balance** are direct `readContract` calls. Balance
   sign convention used in the designs/mock: **+ = they owe you.**
 - **`interpretBalance`** turns the signed balance into "Settled / they owe you / you
-  owe" — that's what the balance-hero caption renders.
+  owe" — feed this into **DirChip** (§5.13) — it handles the arrow, word, label
+  personalization, and accent assignment for every balance surface.
 - **Resilient post-write refresh** is the source of the grey "Saved — updating…"
   state: after a write, wait for the subgraph to index past the write's block,
   refetch with `Promise.allSettled` (one failed read never blanks the others), and **a

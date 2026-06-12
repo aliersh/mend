@@ -1,159 +1,279 @@
-import { useEffect, useState } from 'react'
-import { formatUnits } from 'viem'
-import type { Address, Hex } from 'viem'
-import type { CSSProperties } from 'react'
+// HomeView.tsx — Home screen (§8.2). Full-height column, bg-bg, px-18, pb-28.
+//
+// Structure: AppHeader → net summary → WalletStrip → SectionLabel → group list.
+//
+// Data: fetches homeBalances + USDC in parallel on mount and on retry.
+// State precedence for list area: error → loading → empty → normal.
+//
+// Money rule (§5.3):
+//   net hero → <Num display> proportional, --ink
+//   WalletStrip amount + group row amounts → <Num> tabular (default), --ink
+//
+// Stubs (wired in later phases):
+//   avatar button → profile (F5)
+//   "New" affordance → create group (F5)
+//   empty CTA "Create a group" → create group (F5)
+//   WalletStrip "Add funds" → AddFundsPanel (F3)
+
+import { useEffect, useState, useCallback } from 'react'
+import type { Address } from 'viem'
 import type { GroupItem } from '../lib/fetchGroups'
+import { fetchHomeBalances } from '../lib/homeBalances'
+import type { HomeBalances } from '../lib/homeBalances'
 import { fetchUsdcBalance } from '../lib/settle'
-import { AddFunds } from './AddFunds'
+import { getIdentity } from '../lib/identity'
+import {
+  Mark, Wordmark, Avatar, Num, money,
+  Skeleton, SectionLabel, Plus, Globe, Logout,
+} from '../ui'
+import { WalletStrip } from './WalletStrip'
+import { GroupRow } from './GroupRow'
+import { EmptyState } from './EmptyState'
 
-type SendUserOperation = (req: { to: Address; data: Hex }) => Promise<Hex>
+// ── AppHeader ─────────────────────────────────────────────────────────────────
+// Local component — may be promoted to its own file for desktop reuse later.
+// Avatar button is a non-navigable stub; F5 wires it to the profile screen.
+function AppHeader({ smartAccount, onLogout }: { smartAccount: Address; onLogout: () => void }) {
+  const me = getIdentity(smartAccount)
+  return (
+    <div
+      className="flex items-center justify-between"
+      style={{ padding: '8px 4px 16px' }} /* prototype screens.jsx AppHeader */
+    >
+      {/* Left: mark + wordmark */}
+      <div className="flex items-center" style={{ gap: 9 }}>
+        <Mark s={22} />
+        <Wordmark size={21} />
+      </div>
 
-type Props = {
+      {/* Right: avatar stub + discreet logout */}
+      <div className="flex items-center" style={{ gap: 10 }}>
+        {/* interim logout until the profile screen ships */}
+        <button
+          type="button"
+          aria-label="Sign out"
+          onClick={onLogout}
+          className="text-muted flex items-center"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, gap: 4, fontFamily: 'var(--font-ui)', fontSize: 12 }}
+        >
+          <Logout color="var(--muted)" size={14} />
+          <span>Sign out</span>
+        </button>
+
+        {/* viewer avatar — stub; F5 wires navigation */}
+        <button
+          type="button"
+          aria-label="Your Ponti"
+          aria-disabled="true"
+          style={{ all: 'unset', cursor: 'default', display: 'inline-flex' }}
+        >
+          <Avatar initial={me.initial} tone="neutral" size={34} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── HomeView ───────────────────────────────────────────────────────────────────
+
+interface HomeViewProps {
   smartAccount: Address | undefined
-  send: SendUserOperation | undefined
   groups: GroupItem[]
   loadingGroups: boolean
   groupsInitialized: boolean
+  groupsError: boolean
   onSelectGroup: (group: GroupItem) => void
-  logout: () => void
-  // create-group state (owned by App for persistence across navigation)
-  counterparty: string
-  onCounterpartyChange: (v: string) => void
-  submitting: boolean
-  txHash: Hex | null
-  createdGroup: Address | null
-  groupNote: string | null
-  createError: string | null
-  validationError: string | null
-  onCreate: () => void
+  onRetry: () => void
+  onLogout: () => void
 }
 
 export function HomeView({
   smartAccount,
-  send,
   groups,
   loadingGroups,
   groupsInitialized,
+  groupsError,
   onSelectGroup,
-  logout,
-  counterparty,
-  onCounterpartyChange,
-  submitting,
-  txHash,
-  createdGroup,
-  groupNote,
-  createError,
-  validationError,
-  onCreate,
-}: Props) {
-  const canSubmit = !!send && !!counterparty && !validationError && !submitting
+  onRetry,
+  onLogout,
+}: HomeViewProps) {
+  const [balances, setBalances] = useState<HomeBalances | null>(null)
+  const [balancesLoading, setBalancesLoading] = useState(false)
+  const [balancesError, setBalancesError] = useState(false)
 
-  const [usdcBalance, setUsdcBalance] = useState<bigint | null>(null)
+  const [usdc, setUsdc] = useState<bigint | null>(null)
+  const [usdcError, setUsdcError] = useState(false)
+
+  // fetchBalances: callable from the mount effect AND retry handler.
+  const fetchBalances = useCallback(async (account: Address, groupList: GroupItem[]) => {
+    setBalancesLoading(true)
+    setBalancesError(false)
+    setUsdcError(false)
+    try {
+      const [homeBalancesResult, usdcResult] = await Promise.all([
+        fetchHomeBalances(groupList, account),
+        fetchUsdcBalance(account),
+      ])
+      setBalances(homeBalancesResult)
+      setUsdc(usdcResult)
+    } catch {
+      setBalancesError(true)
+      setUsdcError(true)
+    } finally {
+      setBalancesLoading(false)
+    }
+  }, [])
+
+  // Re-fetch whenever groups or smartAccount changes.
   useEffect(() => {
     if (!smartAccount) return
-    fetchUsdcBalance(smartAccount).then(setUsdcBalance).catch(() => {})
-  }, [smartAccount])
+    void fetchBalances(smartAccount, groups)
+  }, [groups, smartAccount, fetchBalances])
 
+  function handleRetry() {
+    onRetry()
+    if (smartAccount) void fetchBalances(smartAccount, groups)
+  }
+
+  // ── Derived display values ─────────────────────────────────────────────────
+  const net = balances?.net ?? 0n
+
+  function netCaption(): string {
+    if (net > 0n) return "You're owed, net"
+    if (net < 0n) return 'You owe, net'
+    return "You're all square"
+  }
+
+  function netDisplay(): string {
+    if (net > 0n) return '+' + money(net)
+    if (net < 0n) return '−' + money(net) // U+2212 minus
+    return money(0n) // "0.00", no sign
+  }
+
+  // ── List-area state precedence ─────────────────────────────────────────────
+  // error → loading → empty → normal
+  const hasError = groupsError || balancesError
+  const isLoading = !groupsInitialized || loadingGroups || balancesLoading
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <main style={page}>
-      <h1>Ponti</h1>
-      <p>
-        Smart account: <code>{smartAccount ?? 'provisioning…'}</code>{' '}
-        <button onClick={logout}>Log out</button>
-      </p>
-      {smartAccount && (
-        <>
-          {usdcBalance !== null && (
-            <p>
-              Wallet:{' '}
-              <a
-                href={`https://sepolia.basescan.org/address/${smartAccount}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {formatUnits(usdcBalance, 6)} USDC
-              </a>
-            </p>
-          )}
-          <AddFunds smartAccount={smartAccount} onRefreshed={setUsdcBalance} />
-        </>
-      )}
+    <div
+      className="min-h-screen bg-bg flex flex-col"
+      style={{ padding: '0 18px 28px' }} /* prototype screens.jsx Home */
+    >
+      {/* 1. AppHeader */}
+      {smartAccount && <AppHeader smartAccount={smartAccount} onLogout={onLogout} />}
 
-      <h2>Your groups</h2>
-      {loadingGroups && <p>Loading…</p>}
-      {groupsInitialized && !loadingGroups && groups.length === 0 && (
-        <p style={{ color: 'grey' }}>No groups yet. Create one below.</p>
-      )}
-      {groups.map((g) => (
-        <div
-          key={g.address}
-          style={groupRow}
-          onClick={() => onSelectGroup(g)}
+      {/* 2. Net summary */}
+      <div style={{ padding: '2px 2px 20px' }}> {/* prototype screens.jsx */}
+        <span
+          className="font-ui font-semibold text-muted"
+          style={{ fontSize: 13 }} /* prototype screens.jsx */
         >
-          <code style={{ fontSize: '0.85em' }}>{g.address}</code>
-          <span style={{ color: 'grey', fontSize: '0.85em' }}>
-            with <code>{g.counterparty}</code>
-          </span>
+          {netCaption()}
+        </span>
+        <div className="flex items-baseline" style={{ marginTop: 2, gap: 4 }}>
+          {balancesLoading ? (
+            <Skeleton w={120} h={38} r={6} />
+          ) : balancesError ? (
+            <span className="font-ui text-muted" style={{ fontSize: 38 }}>—</span>
+          ) : (
+            <>
+              <Num display size={38}>{netDisplay()}</Num>
+              <span
+                className="font-ui font-semibold text-muted"
+                style={{ fontSize: 16, letterSpacing: '0.02em', marginLeft: 1 }} /* prototype screens.jsx */
+              >
+                USDC
+              </span>
+            </>
+          )}
         </div>
-      ))}
-
-      <h2>Create group</h2>
-      <input
-        placeholder="Counterparty address (0x…)"
-        value={counterparty}
-        onChange={(e) => onCounterpartyChange(e.target.value.trim())}
-        style={{ width: 440, fontFamily: 'monospace' }}
-      />
-      <div>
-        <button onClick={onCreate} disabled={!canSubmit}>
-          {submitting ? 'Sending (sponsored)…' : 'Create group'}
-        </button>
       </div>
-      {validationError && <p style={{ color: 'crimson' }}>{validationError}</p>}
 
-      {txHash && (
-        <div>
-          <p>
-            Transaction submitted (sponsored):{' '}
-            <a
-              href={`https://sepolia.basescan.org/tx/${txHash}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              view on Basescan
-            </a>
-          </p>
-          {createdGroup && (
-            <p>
-              Group created: <code>{createdGroup}</code>
-            </p>
-          )}
-          {groupNote && (
-            <p style={{ color: 'darkorange' }}>
-              Submitted, but could not read the group address yet: {groupNote}
-            </p>
-          )}
-        </div>
-      )}
-      {createError && <p style={{ color: 'crimson' }}>Error: {createError}</p>}
-    </main>
+      {/* 3. WalletStrip */}
+      <div style={{ marginBottom: 22 }}> {/* prototype screens.jsx */}
+        <WalletStrip usdc={usdcError ? null : usdc} />
+      </div>
+
+      {/* 4. SectionLabel */}
+      <SectionLabel
+        right={
+          /* "New" affordance — stub for F2; create path is F5 */
+          <button
+            type="button"
+            style={{
+              all: 'unset',
+              cursor: 'default', /* non-navigable stub */
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              color: 'var(--accent)',
+              fontFamily: 'var(--font-ui)',
+              fontSize: 13,
+              fontWeight: 700,
+            }}
+            aria-disabled="true"
+          >
+            <Plus color="var(--accent)" size={13} />
+            New
+          </button>
+        }
+      >
+        Your groups
+      </SectionLabel>
+
+      {/* 5. Group list — 4-state precedence: error → loading → empty → normal */}
+      <div className="flex flex-col" style={{ gap: 9, marginTop: 8 }}>
+        {hasError ? (
+          /* Error state */
+          <EmptyState
+            icon={<Globe color="var(--accent)" size={40} />}
+            title="Couldn't reach the network"
+            body="We couldn't load your groups just now. This is a connection hiccup, not a lost balance — nothing was lost, and your money is exactly where it was."
+            cta="Try again"
+            onCta={handleRetry}
+            tone="error"
+          />
+        ) : isLoading ? (
+          /* Loading state — 3 skeleton rows matching prototype dimensions */
+          <>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="flex items-center bg-surface border border-border rounded-sm"
+                style={{ gap: 13, padding: '13px 14px' }} /* prototype screens.jsx */
+              >
+                <Skeleton w={44} h={44} r={22} />
+                <div className="flex-1 flex flex-col" style={{ gap: 7 }}>
+                  <Skeleton w="55%" h={13} />
+                  <Skeleton w="35%" h={11} />
+                </div>
+                <Skeleton w={56} h={16} />
+              </div>
+            ))}
+          </>
+        ) : groups.length === 0 ? (
+          /* Empty state — "Create a group" is a stub (no-op); create path is F5 */
+          <EmptyState
+            icon={<Mark s={40} />}
+            title="No groups yet"
+            body="A group is one shared account between two people. Start one and add your first expense."
+            cta="Create a group"
+            onCta={undefined} /* stub: no-op so button looks active, not dimmed */
+          />
+        ) : (
+          /* Normal state */
+          groups.map((group) => (
+            <GroupRow
+              key={group.address}
+              group={group}
+              balance={balances?.byGroup[group.address]}
+              onClick={() => onSelectGroup(group)}
+            />
+          ))
+        )}
+      </div>
+    </div>
   )
-}
-
-const page: CSSProperties = {
-  maxWidth: 640,
-  margin: '2rem auto',
-  padding: '0 1rem',
-  fontFamily: 'system-ui, sans-serif',
-}
-
-const groupRow: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 2,
-  padding: '0.5rem',
-  marginBottom: '0.5rem',
-  border: '1px solid #ddd',
-  borderRadius: 4,
-  cursor: 'pointer',
 }

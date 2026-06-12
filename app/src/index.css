@@ -52,6 +52,14 @@
   --spacing-22: 22px;      /* → p-22 / gap-22 / px-22 … */
 }
 
+/* ── Base: full-viewport background, prevents white tail in dark mode ─────── */
+html, body, #root {
+  min-height: 100vh;
+}
+body {
+  background: var(--bg);
+}
+
 /* Numeric figures (mirrors the design's .tnum/.pnum). */
 @utility tnum {
   font-variant-numeric: tabular-nums lining-nums;
@@ -59,4 +67,24 @@
 }
 @utility pnum {
   font-variant-numeric: proportional-nums lining-nums;
+}
+
+/* ── Skeleton shimmer ────────────────────────────────────────────────────────
+   Uses design tokens so the gradient flips automatically in light + dark.
+   background-size: 400% 100% gives the shimmer room to slide across.
+   Animation name must match @keyframes below. Build verifies the class is
+   emitted; visual animation requires a running app to confirm. */
+@keyframes skel-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+@utility skel {
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--border)    50%,
+    var(--surface-2) 75%
+  );
+  background-size: 400% 100%;
+  animation: skel-shimmer 1.6s linear infinite;
 }
